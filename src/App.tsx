@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ADAPTERS, adapterFor } from '@/adapters'
+import { Button } from '@/components/ui/button'
 import { TransactionTable } from '@/components/transaction-table'
 import { db } from '@/storage/db'
 import { importTransactions, type ImportReport } from '@/storage/import'
+import { downloadWorkbook } from '@/storage/spreadsheet'
 
 const supportedBanks = () => ADAPTERS.map((a) => a.label).join(', ')
 
@@ -52,19 +54,30 @@ export default function App() {
             Reads your bank exports and shows where the money goes.
           </p>
         </div>
-        <label className="shrink-0 text-sm">
-          <span className="sr-only">Import a statement</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void importFile(file)
-              event.target.value = ''
+        <div className="flex shrink-0 items-center gap-3">
+          <label className="text-sm">
+            <span className="sr-only">Import a statement</span>
+            <input
+              type="file"
+              accept=".csv,text/csv"
+              className="file:bg-primary file:text-primary-foreground hover:file:bg-primary/80 file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) void importFile(file)
+                event.target.value = ''
+              }}
+            />
+          </label>
+          <Button
+            variant="outline"
+            disabled={!transactions || transactions.length === 0}
+            onClick={() => {
+              downloadWorkbook(transactions ?? [])
             }}
-          />
-        </label>
+          >
+            Export
+          </Button>
+        </div>
       </header>
 
       {error && (
