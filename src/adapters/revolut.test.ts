@@ -145,6 +145,29 @@ describe('fields', () => {
   })
 })
 
+describe('transfer descriptions', () => {
+  test.each([
+    ['To Mario Rossi', 'mario rossi'],
+    ['From Mario Rossi', 'mario rossi'],
+    ['TO MARIO ROSSI', 'mario rossi'],
+  ])('%j becomes %j', (description, expected) => {
+    expect(parseOne({ type: 'Transfer', description }).merchant).toBe(expected)
+  })
+
+  test('the direction prefix is only stripped on transfers', () => {
+    expect(
+      parseOne({ type: 'Card Payment', description: 'To Go Coffee' }).merchant,
+    ).toBe('to go coffee')
+  })
+
+  test('the raw description keeps the prefix', () => {
+    expect(
+      parseOne({ type: 'Transfer', description: 'To Mario Rossi' })
+        .rawDescription,
+    ).toBe('To Mario Rossi')
+  })
+})
+
 describe('identity', () => {
   test('two identical purchases on the same day stay two transactions', () => {
     const { transactions } = revolutAdapter.parse(

@@ -22,6 +22,8 @@ const TYPE_MAP: Record<string, TransactionType> = {
   atm: 'atm',
 }
 
+const TRANSFER_DIRECTION = /^(to|from)\s+/i
+
 const DATE_TIME = /^(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}$/
 
 const round2 = (n: number) => Math.round(n * 100) / 100
@@ -84,7 +86,11 @@ export const revolutAdapter: BankAdapter = {
         amountRaw,
         amountEur: isEur ? amountRaw : null,
         rawDescription,
-        merchant: normaliseMerchant(rawDescription),
+        merchant: normaliseMerchant(
+          type === 'transfer'
+            ? rawDescription.replace(TRANSFER_DIRECTION, '')
+            : rawDescription,
+        ),
         category: null,
         subcategory: null,
         account: (row.Product ?? '').trim(),
