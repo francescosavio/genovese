@@ -134,10 +134,10 @@ describe('fields', () => {
     expect(tx.date).toBe('2026-08-31')
   })
 
-  test('the raw description is preserved for normalisation later', () => {
-    const tx = parseOne({ description: 'CCV*ALBERTHEIJN 1234 AMSTERDAM NLD' })
-    expect(tx.rawDescription).toBe('CCV*ALBERTHEIJN 1234 AMSTERDAM NLD')
-    expect(tx.merchant).toBeNull()
+  test('the raw description is preserved alongside the normalised key', () => {
+    const tx = parseOne({ description: 'SumUp *Bar Centrale' })
+    expect(tx.rawDescription).toBe('SumUp *Bar Centrale')
+    expect(tx.merchant).toBe('bar centrale')
   })
 
   test('a fresh transaction is uncategorized, which is not Other', () => {

@@ -1,6 +1,7 @@
 import Papa from 'papaparse'
 import type { BankAdapter, SkippedRow } from '@/domain/bank-adapter'
 import { contentHash } from '@/domain/hash'
+import { normaliseMerchant } from '@/domain/merchant'
 import type { Transaction, TransactionType } from '@/domain/transaction'
 
 const REQUIRED_HEADERS = [
@@ -83,7 +84,7 @@ export const revolutAdapter: BankAdapter = {
         amountRaw,
         amountEur: isEur ? amountRaw : null,
         rawDescription,
-        merchant: null,
+        merchant: normaliseMerchant(rawDescription),
         category: null,
         subcategory: null,
         account: (row.Product ?? '').trim(),
