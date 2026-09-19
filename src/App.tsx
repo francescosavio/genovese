@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ADAPTERS, adapterFor } from '@/adapters'
+import { ClearDataButton } from '@/components/clear-data-button'
 import { Button } from '@/components/ui/button'
 import { TransactionTable } from '@/components/transaction-table'
 import { db } from '@/storage/db'
@@ -91,6 +92,14 @@ export default function App() {
           >
             Export
           </Button>
+          <ClearDataButton
+            disabled={!transactions || transactions.length === 0}
+            onCleared={() => {
+              setReport(null)
+              setWarnings([])
+              setError(null)
+            }}
+          />
         </div>
       </header>
 
