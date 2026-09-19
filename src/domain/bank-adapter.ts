@@ -1,9 +1,10 @@
 import type { BankId, Transaction } from './transaction'
 
-export type SkipReason = 'pending' | 'reverted' | 'unparsable'
+export type SkipReason = 'not_completed' | 'unparsable'
 
 export type SkippedRow = {
   reason: SkipReason
+  detail: string // the bank's own wording
   rawDescription: string
 }
 
