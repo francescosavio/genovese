@@ -23,6 +23,7 @@ export function TransactionTable({
           <th className="py-2 pr-4 font-medium">Date</th>
           <th className="py-2 pr-4 font-medium">Merchant</th>
           <th className="py-2 pr-4 font-medium">Description</th>
+          <th className="py-2 pr-4 font-medium">Category</th>
           <th className="py-2 pl-4 text-right font-medium">Amount</th>
         </tr>
       </thead>
@@ -42,6 +43,23 @@ export function TransactionTable({
               {tx.excluded && (
                 <span className="text-muted-foreground/70 ml-2 text-xs">
                   excluded · {tx.exclusionReason}
+                </span>
+              )}
+            </td>
+            <td className="py-2 pr-4">
+              {tx.category ? (
+                <span>
+                  {tx.category}
+                  {tx.subcategory && (
+                    <span className="text-muted-foreground">
+                      {' › '}
+                      {tx.subcategory}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-muted-foreground/60">
+                  {tx.excluded ? '—' : 'uncategorised'}
                 </span>
               )}
             </td>

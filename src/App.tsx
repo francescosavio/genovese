@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ADAPTERS, adapterFor } from '@/adapters'
+import { CategoriseScreen } from '@/components/categorise-screen'
 import { ClearDataButton } from '@/components/clear-data-button'
 import { Button } from '@/components/ui/button'
 import { TransactionTable } from '@/components/transaction-table'
@@ -23,6 +24,7 @@ export default function App() {
   const [report, setReport] = useState<ImportReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
+  const [view, setView] = useState<'transactions' | 'categorise'>('categorise')
 
   // Re-runs on its own whenever the table changes, so importing updates the
   // list without a refetch. undefined means the first read is still running.
@@ -141,10 +143,29 @@ export default function App() {
         </div>
       ) : (
         <>
-          <p className="text-muted-foreground mb-3 text-sm">
-            {transactions.length} transactions
-          </p>
-          <TransactionTable transactions={transactions} />
+          <div className="mb-4 flex gap-1 text-sm">
+            {(['categorise', 'transactions'] as const).map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  setView(name)
+                }}
+                className={`rounded-lg px-3 py-1.5 capitalize ${
+                  view === name
+                    ? 'bg-muted font-medium'
+                    : 'text-muted-foreground hover:bg-muted/50'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          {view === 'categorise' ? (
+            <CategoriseScreen transactions={transactions} />
+          ) : (
+            <TransactionTable transactions={transactions} />
+          )}
         </>
       )}
     </main>
