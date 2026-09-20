@@ -13,6 +13,7 @@ export const CATEGORIES = {
   Gift: [],
   Work: [],
   Games: [],
+  Taxes: [],
   Other: [],
 } as const satisfies Record<string, readonly string[]>
 

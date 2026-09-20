@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { SpendDonut } from '@/components/spend-donut'
-import { toSlices } from '@/components/spend-slices'
+import { toSlices, toTableRows } from '@/components/spend-slices'
+import { CategoryTable } from '@/components/category-table'
 import { SpendOverTime } from '@/components/spend-over-time'
 import {
   ALL,
@@ -63,7 +64,8 @@ export function Dashboard({
   }
 
   const period = totals(transactions, filter)
-  const slices = toSlices(spendByBucket(transactions, filter))
+  const buckets = spendByBucket(transactions, filter)
+  const slices = toSlices(buckets)
   const outstanding = uncategorised(transactions)
   const average = averages(transactions, filter)
   const series = runningTotal(
@@ -155,22 +157,9 @@ export function Dashboard({
       {/* The auto left margin on the table eats the free space, so the donut
           sits left and the table sits right with the slack between them. */}
       <div className="flex flex-wrap items-center gap-12">
-        <SpendDonut slices={slices} total={period.spent} />
+        <SpendDonut slices={slices} />
 
-        {/* Names only: the donut carries the proportions and the hover
-            readout carries the amounts. Identity still is not colour alone. */}
-        <ul className="space-y-1.5 text-sm">
-          {slices.map((slice) => (
-            <li key={slice.label} className="flex items-center gap-2.5">
-              <span
-                aria-hidden
-                className="size-2.5 shrink-0 rounded-[2px]"
-                style={{ background: slice.colour }}
-              />
-              {slice.label}
-            </li>
-          ))}
-        </ul>
+        <CategoryTable rows={toTableRows(buckets)} />
 
         <dl className="divide-border min-w-56 divide-y text-sm md:ml-auto">
           <Stat label="Spent" value={period.spent} />

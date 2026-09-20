@@ -32,13 +32,7 @@ const EUR = new Intl.NumberFormat('nl-NL', {
   currency: 'EUR',
 })
 
-export function SpendDonut({
-  slices,
-  total,
-}: {
-  slices: Slice[]
-  total: number
-}) {
+export function SpendDonut({ slices }: { slices: Slice[] }) {
   const [hovered, setHovered] = useState<string | null>(null)
   const shown = slices.find((s) => s.label === hovered)
 
@@ -83,19 +77,19 @@ export function SpendDonut({
         })}
       </svg>
 
-      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-muted-foreground text-xs">
-          {shown ? shown.label : 'Total spent'}
-        </span>
-        <span className="text-xl font-semibold tabular-nums">
-          {EUR.format(shown ? shown.total : total)}
-        </span>
-        {shown && (
+      {/* Empty at rest: the headline above already carries the total, and a
+          long amount used to overlap the ring. */}
+      {shown && (
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-12 text-center">
+          <span className="text-muted-foreground text-xs">{shown.label}</span>
+          <span className="text-base font-semibold tabular-nums">
+            {EUR.format(shown.total)}
+          </span>
           <span className="text-muted-foreground text-xs tabular-nums">
             {Math.round(shown.share * 100)}%
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
