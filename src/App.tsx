@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ADAPTERS, adapterFor } from '@/adapters'
 import { CategoriseScreen } from '@/components/categorise-screen'
+import { Dashboard } from '@/components/dashboard'
 import { ClearDataButton } from '@/components/clear-data-button'
 import { Button } from '@/components/ui/button'
 import { TransactionTable } from '@/components/transaction-table'
@@ -24,7 +25,9 @@ export default function App() {
   const [report, setReport] = useState<ImportReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [warnings, setWarnings] = useState<string[]>([])
-  const [view, setView] = useState<'transactions' | 'categorise'>('categorise')
+  const [view, setView] = useState<'dashboard' | 'categorise' | 'transactions'>(
+    'dashboard',
+  )
 
   // Re-runs on its own whenever the table changes, so importing updates the
   // list without a refetch. undefined means the first read is still running.
@@ -69,7 +72,9 @@ export default function App() {
     <main className="mx-auto max-w-5xl p-8">
       <header className="mb-8 flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-primary">Genovese</h1>
+          <h1 className="text-primary text-2xl font-semibold tracking-tight">
+            Genovese
+          </h1>
           <p className="text-muted-foreground text-sm">
             Reads your bank exports and shows where the money goes.
           </p>
@@ -144,26 +149,37 @@ export default function App() {
       ) : (
         <>
           <div className="mb-4 flex gap-1 text-sm">
-            {(['categorise', 'transactions'] as const).map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => {
-                  setView(name)
-                }}
-                className={`rounded-lg px-3 py-1.5 capitalize ${
-                  view === name
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {name}
-              </button>
-            ))}
+            {(['dashboard', 'categorise', 'transactions'] as const).map(
+              (name) => (
+                <button
+                  key={name}
+                  type="button"
+                  onClick={() => {
+                    setView(name)
+                  }}
+                  className={`rounded-lg px-3 py-1.5 capitalize ${
+                    view === name
+                      ? 'bg-accent text-accent-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {name}
+                </button>
+              ),
+            )}
           </div>
-          {view === 'categorise' ? (
+          {view === 'dashboard' && (
+            <Dashboard
+              transactions={transactions}
+              onFixUncategorised={() => {
+                setView('categorise')
+              }}
+            />
+          )}
+          {view === 'categorise' && (
             <CategoriseScreen transactions={transactions} />
-          ) : (
+          )}
+          {view === 'transactions' && (
             <TransactionTable transactions={transactions} />
           )}
         </>

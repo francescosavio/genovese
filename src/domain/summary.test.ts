@@ -1,0 +1,235 @@
+import { describe, expect, test } from 'vitest'
+import {
+  ALL,
+  UNCATEGORISED,
+  averages,
+  monthsPresent,
+  spendByBucket,
+  spendByMonth,
+  totals,
+  uncategorised,
+  yearsPresent,
+} from './summary'
+import type { Transaction } from './transaction'
+
+function tx(over: Partial<Transaction> = {}): Transaction {
+  return {
+    id: Math.random().toString(36),
+    date: '2026-09-01',
+    currency: 'EUR',
+    amountRaw: -10,
+    amountEur: -10,
+    rawDescription: 'Albert Heijn',
+    merchant: 'albert heijn',
+    category: 'Food',
+    subcategory: 'Groceries',
+    account: 'Current',
+    sourceBank: 'revolut',
+    type: 'card_payment',
+    excluded: false,
+    exclusionReason: null,
+    notes: '',
+    ...over,
+  }
+}
+
+const everything = { period: null, category: ALL } as const
+
+describe('months present', () => {
+  test('newest first, deduplicated', () => {
+    expect(
+      monthsPresent([
+        tx({ date: '2026-09-04' }),
+        tx({ date: '2024-01-15' }),
+        tx({ date: '2026-09-20' }),
+      ]),
+    ).toEqual(['2026-09', '2024-01'])
+  })
+
+  test('excluded rows do not create a month of their own', () => {
+    expect(monthsPresent([tx({ date: '2025-05-01', excluded: true })])).toEqual(
+      [],
+    )
+  })
+})
+
+describe('totals', () => {
+  test('spending and income are reported apart, both positive', () => {
+    expect(
+      totals([tx({ amountEur: -40 }), tx({ amountEur: 500 })], everything),
+    ).toEqual({ spent: 40, received: 500 })
+  })
+
+  test('a refund cannot make the period look cheaper than it was', () => {
+    const { spent } = totals(
+      [tx({ amountEur: -100 }), tx({ amountEur: 30 })],
+      everything,
+    )
+    expect(spent).toBe(100)
+  })
+
+  test('excluded rows are not spending', () => {
+    expect(
+      totals([tx({ amountEur: -20, excluded: true })], everything).spent,
+    ).toBe(0)
+  })
+
+  test('a month period selects by the transaction date', () => {
+    const data = [
+      tx({ date: '2026-08-31', amountEur: -10 }),
+      tx({ date: '2026-09-01', amountEur: -25 }),
+    ]
+    expect(totals(data, { period: '2026-09', category: ALL }).spent).toBe(25)
+  })
+
+  // The period is a date prefix, so a year needs no separate code path.
+  test('a year period gathers every month in it', () => {
+    const data = [
+      tx({ date: '2025-12-31', amountEur: -10 }),
+      tx({ date: '2026-03-01', amountEur: -25 }),
+      tx({ date: '2026-11-04', amountEur: -5 }),
+    ]
+    expect(totals(data, { period: '2026', category: ALL }).spent).toBe(30)
+  })
+})
+
+describe('spend by bucket', () => {
+  test('ranks categories by how much left, biggest first', () => {
+    const ranked = spendByBucket(
+      [
+        tx({ category: 'Food', amountEur: -30 }),
+        tx({ category: 'Home', amountEur: -900 }),
+        tx({ category: 'Sport', amountEur: -50 }),
+      ],
+      everything,
+    )
+    expect(ranked.map((r) => r.bucket)).toEqual(['Home', 'Sport', 'Food'])
+  })
+
+  test('shares add up to the whole', () => {
+    const ranked = spendByBucket(
+      [
+        tx({ category: 'Food', amountEur: -25 }),
+        tx({ category: 'Home', amountEur: -75 }),
+      ],
+      everything,
+    )
+    expect(ranked.map((r) => r.share)).toEqual([0.75, 0.25])
+  })
+
+  // Otherwise the chart's own total is a lie.
+  test('uncategorised money is a bucket, not an omission', () => {
+    const ranked = spendByBucket(
+      [
+        tx({ category: 'Food', amountEur: -10 }),
+        tx({ category: null, subcategory: null, amountEur: -90 }),
+      ],
+      everything,
+    )
+    expect(ranked[0]).toMatchObject({ bucket: UNCATEGORISED, total: 90 })
+  })
+
+  test('income is not part of spending', () => {
+    expect(spendByBucket([tx({ amountEur: 500 })], everything)).toEqual([])
+  })
+
+  test('an empty period is empty, not a division by zero', () => {
+    expect(spendByBucket([], everything)).toEqual([])
+  })
+})
+
+describe('spend by month', () => {
+  test('is ordered oldest first, because time runs that way on an axis', () => {
+    const series = spendByMonth(
+      [
+        tx({ date: '2026-09-02', amountEur: -30 }),
+        tx({ date: '2026-07-11', amountEur: -10 }),
+        tx({ date: '2026-09-20', amountEur: -5 }),
+      ],
+      everything,
+    )
+    expect(series).toEqual([
+      { month: '2026-07', spent: 10 },
+      { month: '2026-09', spent: 35 },
+    ])
+  })
+
+  test('honours a category filter', () => {
+    const series = spendByMonth(
+      [
+        tx({ date: '2026-09-02', category: 'Food', amountEur: -30 }),
+        tx({ date: '2026-09-03', category: 'Home', amountEur: -900 }),
+      ],
+      { period: null, category: 'Food' },
+    )
+    expect(series).toEqual([{ month: '2026-09', spent: 30 }])
+  })
+})
+
+describe('outstanding work', () => {
+  test('counts uncategorised rows and what they are worth', () => {
+    expect(
+      uncategorised([
+        tx({ category: 'Food' }),
+        tx({ category: null, amountEur: -12.5 }),
+        tx({ category: null, amountEur: -7.5 }),
+      ]),
+    ).toEqual({ count: 2, total: 20 })
+  })
+
+  test('an uncategorised refund does not reduce the outstanding amount', () => {
+    expect(uncategorised([tx({ category: null, amountEur: 40 })])).toEqual({
+      count: 1,
+      total: 0,
+    })
+  })
+
+  test('excluded rows are not outstanding work', () => {
+    expect(uncategorised([tx({ category: null, excluded: true })]).count).toBe(
+      0,
+    )
+  })
+})
+
+describe('averages', () => {
+  test('divide by the months that have data inside the period', () => {
+    const data = [
+      tx({ date: '2026-01-05', amountEur: -100 }),
+      tx({ date: '2026-03-05', amountEur: -200 }),
+    ]
+    expect(averages(data, { period: '2026', category: ALL })).toEqual({
+      months: 2,
+      spentPerMonth: 150,
+      receivedPerMonth: 0,
+    })
+  })
+
+  test('a single month averages to itself, which is why the UI hides it', () => {
+    const data = [tx({ date: '2026-01-05', amountEur: -100 })]
+    expect(averages(data, { period: '2026-01', category: ALL })).toMatchObject({
+      months: 1,
+      spentPerMonth: 100,
+    })
+  })
+
+  test('an empty period does not divide by zero', () => {
+    expect(averages([], everything)).toEqual({
+      months: 0,
+      spentPerMonth: 0,
+      receivedPerMonth: 0,
+    })
+  })
+})
+
+describe('years present', () => {
+  test('newest first', () => {
+    expect(
+      yearsPresent([tx({ date: '2024-05-01' }), tx({ date: '2026-01-01' })]),
+    ).toEqual(['2026', '2024'])
+  })
+
+  test('months can be narrowed to one year', () => {
+    const data = [tx({ date: '2025-06-01' }), tx({ date: '2026-02-01' })]
+    expect(monthsPresent(data, '2026')).toEqual(['2026-02'])
+  })
+})
