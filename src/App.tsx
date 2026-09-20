@@ -69,7 +69,7 @@ export default function App() {
     <main className="mx-auto max-w-5xl p-8">
       <header className="mb-8 flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Genovese</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-primary">Genovese</h1>
           <p className="text-muted-foreground text-sm">
             Reads your bank exports and shows where the money goes.
           </p>
@@ -153,8 +153,8 @@ export default function App() {
                 }}
                 className={`rounded-lg px-3 py-1.5 capitalize ${
                   view === name
-                    ? 'bg-muted font-medium'
-                    : 'text-muted-foreground hover:bg-muted/50'
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
                 {name}
