@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { TransactionTable } from '@/components/transaction-table'
 import { db } from '@/storage/db'
 import { importTransactions, type ImportReport } from '@/storage/import'
+import { saveMerchantOverrides } from '@/storage/overrides'
 import { downloadWorkbook, readSpreadsheet } from '@/storage/spreadsheet'
 
 const supportedBanks = () => ADAPTERS.map((a) => a.label).join(', ')
@@ -28,6 +29,7 @@ export default function App() {
   const transactions = useLiveQuery(() =>
     db.transactions.orderBy('date').reverse().toArray(),
   )
+  const merchantOverrides = useLiveQuery(() => db.merchants.toArray())
 
   async function importFile(file: File) {
     setReport(null)
@@ -37,6 +39,7 @@ export default function App() {
       if (/\.xlsx$/i.test(file.name)) {
         const loaded = await readSpreadsheet(file)
         setWarnings(loaded.warnings)
+        await saveMerchantOverrides(loaded.merchantOverrides)
         setReport(
           await importTransactions({
             transactions: loaded.transactions,
@@ -87,7 +90,7 @@ export default function App() {
             variant="outline"
             disabled={!transactions || transactions.length === 0}
             onClick={() => {
-              downloadWorkbook(transactions ?? [])
+              downloadWorkbook(transactions ?? [], merchantOverrides ?? [])
             }}
           >
             Export

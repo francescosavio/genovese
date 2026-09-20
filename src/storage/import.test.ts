@@ -41,6 +41,7 @@ describe('first import', () => {
     expect(report).toEqual({
       added: 2,
       duplicates: 0,
+      categorised: 0,
       excluded: 0,
       skipped: 0,
     })
@@ -107,6 +108,7 @@ describe('edge cases', () => {
     expect(await importTransactions(result())).toEqual({
       added: 0,
       duplicates: 0,
+      categorised: 0,
       excluded: 0,
       skipped: 0,
     })

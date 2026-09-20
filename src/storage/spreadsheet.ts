@@ -4,6 +4,7 @@ import {
   type Subcategory,
 } from '@/domain/categories'
 import type { Transaction } from '@/domain/transaction'
+import type { MerchantOverride } from './db'
 import * as XLSX from 'xlsx'
 
 export const SCHEMA_VERSION = 1
@@ -38,7 +39,17 @@ function transactionRow(tx: Transaction): Record<string, unknown> {
   return row
 }
 
-export function toWorkbook(transactions: Transaction[]): XLSX.WorkBook {
+const MERCHANT_COLUMNS = [
+  'merchant',
+  'category',
+  'subcategory',
+  'updatedAt',
+] as const satisfies readonly (keyof MerchantOverride)[]
+
+export function toWorkbook(
+  transactions: Transaction[],
+  merchantOverrides: MerchantOverride[] = [],
+): XLSX.WorkBook {
   const book = XLSX.utils.book_new()
 
   const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date))
@@ -48,10 +59,13 @@ export function toWorkbook(transactions: Transaction[]): XLSX.WorkBook {
   sheet['!freeze'] = { xSplit: 0, ySplit: 1 }
   XLSX.utils.book_append_sheet(book, sheet, SHEETS.transactions)
 
+  const merchantRows = [...merchantOverrides]
+    .sort((a, b) => a.merchant.localeCompare(b.merchant))
+    .map((o) => ({ ...o, subcategory: o.subcategory ?? '' }))
   XLSX.utils.book_append_sheet(
     book,
-    XLSX.utils.json_to_sheet([], {
-      header: ['merchant', 'category', 'subcategory', 'updatedAt'],
+    XLSX.utils.json_to_sheet(merchantRows, {
+      header: [...MERCHANT_COLUMNS],
     }),
     SHEETS.merchants,
   )
@@ -73,15 +87,23 @@ export function exportFilename(now = new Date()): string {
   return `genovese-${now.toISOString().slice(0, 10)}.xlsx`
 }
 
-// Never overwrites: every download carries the day in its name.
-export function downloadWorkbook(transactions: Transaction[]): void {
-  XLSX.writeFile(toWorkbook(transactions), exportFilename(), {
-    compression: true,
-  })
+// Never overwrites transactions
+export function downloadWorkbook(
+  transactions: Transaction[],
+  merchantOverrides: MerchantOverride[] = [],
+): void {
+  XLSX.writeFile(
+    toWorkbook(transactions, merchantOverrides),
+    exportFilename(),
+    {
+      compression: true,
+    },
+  )
 }
 
 export type LoadResult = {
   transactions: Transaction[]
+  merchantOverrides: MerchantOverride[]
   warnings: string[]
 }
 
@@ -184,7 +206,11 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
     })
   })
 
-  return { transactions, warnings }
+  return {
+    transactions,
+    merchantOverrides: readMerchants(book, warnings),
+    warnings,
+  }
 }
 
 function readSchemaVersion(book: XLSX.WorkBook): number | null {
@@ -198,4 +224,35 @@ function readSchemaVersion(book: XLSX.WorkBook): number | null {
 
 export async function readSpreadsheet(file: File): Promise<LoadResult> {
   return fromWorkbook(XLSX.read(await file.arrayBuffer(), { type: 'array' }))
+}
+
+function readMerchants(
+  book: XLSX.WorkBook,
+  warnings: string[],
+): MerchantOverride[] {
+  const sheet = book.Sheets[SHEETS.merchants]
+  if (!sheet) return []
+
+  const merchantOverrides: MerchantOverride[] = []
+  XLSX.utils
+    .sheet_to_json<Record<string, unknown>>(sheet)
+    .forEach((row, index) => {
+      const merchant = asText(row.merchant)
+      if (merchant === '') return
+
+      const warn = (message: string) =>
+        warnings.push(`merchants row ${index + 2}: ${message}`)
+      const { category, subcategory } = readCategory(row, warn)
+      if (category === null) {
+        warn(`no usable category for "${merchant}", mapping dropped`)
+        return
+      }
+      merchantOverrides.push({
+        merchant,
+        category,
+        subcategory,
+        updatedAt: asText(row.updatedAt),
+      })
+    })
+  return merchantOverrides
 }

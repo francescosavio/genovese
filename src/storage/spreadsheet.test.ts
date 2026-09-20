@@ -1,4 +1,5 @@
 import type { Transaction } from '@/domain/transaction'
+import type { MerchantOverride } from './db'
 import { describe, expect, test } from 'vitest'
 import * as XLSX from 'xlsx'
 import {
@@ -94,8 +95,11 @@ describe('filename', () => {
   })
 })
 
-function roundTrip(transactions: Transaction[]) {
-  const bytes = XLSX.write(toWorkbook(transactions), {
+function roundTrip(
+  transactions: Transaction[],
+  merchantOverrides: MerchantOverride[] = [],
+) {
+  const bytes = XLSX.write(toWorkbook(transactions, merchantOverrides), {
     type: 'buffer',
     bookType: 'xlsx',
   }) as Buffer
@@ -127,16 +131,40 @@ describe('round trip', () => {
         type: 'transfer',
       }),
     ]
-    const { transactions, warnings } = roundTrip(input)
+    const mappings: MerchantOverride[] = [
+      {
+        merchant: 'albert heijn',
+        category: 'Food',
+        subcategory: 'Groceries',
+        updatedAt: '2026-09-19T10:00:00.000Z',
+      },
+      {
+        merchant: 'netflix',
+        category: 'Subscription',
+        subcategory: null,
+        updatedAt: '2026-09-19T10:00:00.000Z',
+      },
+    ]
+    const { transactions, merchantOverrides, warnings } = roundTrip(
+      input,
+      mappings,
+    )
 
     expect(warnings).toEqual([])
     expect(transactions).toEqual(
       [...input].sort((a, b) => a.date.localeCompare(b.date)),
     )
+    expect(merchantOverrides).toEqual(
+      [...mappings].sort((a, b) => a.merchant.localeCompare(b.merchant)),
+    )
   })
 
   test('an empty file survives the trip', () => {
-    expect(roundTrip([])).toEqual({ transactions: [], warnings: [] })
+    expect(roundTrip([])).toEqual({
+      transactions: [],
+      merchantOverrides: [],
+      warnings: [],
+    })
   })
 
   test('amounts do not drift through the file', () => {
