@@ -22,8 +22,22 @@ export function CategoriseScreen({
   const [activeMerchant, setActiveMerchant] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState<number | null>(null)
+  const [search, setSearch] = useState('')
 
   const groups = useMemo(() => groupByMerchant(transactions), [transactions])
+
+  // Matches the category too
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    if (needle === '') return groups
+    return groups.filter(
+      (g) =>
+        g.merchant.includes(needle) ||
+        `${g.category ?? ''} ${g.subcategory ?? ''}`
+          .toLowerCase()
+          .includes(needle),
+    )
+  }, [groups, search])
   const options = useMemo(() => searchCategories(query), [query])
   const done = coverage(transactions)
 
@@ -49,11 +63,28 @@ export function CategoriseScreen({
     queryInput.current?.focus()
   }
 
+  function onSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      const first = visible[0]
+      if (first) {
+        setSearch('')
+        moveTo(first.merchant)
+      }
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setSearch('')
+      event.currentTarget.blur()
+    }
+  }
+
+  // Walks the visible list, so a filtered view advances through what is on
+  // screen rather than jumping somewhere the search has hidden.
   function nextAfter(merchant: string): string | null {
-    const from = groups.findIndex((g) => g.merchant === merchant)
-    const remaining = groups
+    const from = visible.findIndex((g) => g.merchant === merchant)
+    const remaining = visible
       .slice(from + 1)
-      .concat(groups.slice(0, Math.max(from, 0)))
+      .concat(visible.slice(0, Math.max(from, 0)))
     return remaining.find((g) => g.category === null)?.merchant ?? null
   }
 
@@ -85,11 +116,14 @@ export function CategoriseScreen({
     } else if (event.key === 'Tab') {
       event.preventDefault()
       if (!active) return
-      const at = groups.findIndex((g) => g.merchant === active.merchant)
-      moveTo(groups[at + 1]?.merchant ?? groups[0]?.merchant ?? null)
+      const at = visible.findIndex((g) => g.merchant === active.merchant)
+      moveTo(visible[at + 1]?.merchant ?? visible[0]?.merchant ?? null)
     } else if (event.key === 'Escape') {
+      event.preventDefault()
+      // Clears this box and steps out
       setQuery('')
       setHighlight(null)
+      event.currentTarget.blur()
     }
   }
 
@@ -128,44 +162,63 @@ export function CategoriseScreen({
       </section>
 
       <div className="grid gap-8 md:grid-cols-[1fr_20rem]">
-        <ul className="max-h-[28rem] overflow-y-auto pr-1">
-          {groups.map((group) => {
-            const isActive = group.merchant === active?.merchant
-            return (
-              <li
-                key={group.merchant}
-                ref={isActive ? activeRow : null}
-                aria-current={isActive}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    moveTo(group.merchant)
-                  }}
-                  className={`flex w-full items-baseline gap-3 rounded-lg px-3 py-2 text-left text-sm ${
-                    isActive ? 'bg-muted' : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <span className="flex-1 truncate">
-                    {group.merchant}
-                    {group.category && (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        {group.category}
-                        {group.subcategory ? ` › ${group.subcategory}` : ''}
+        <div className="space-y-2">
+          <input
+            value={search}
+            placeholder="Search merchants or categories"
+            aria-label="Search merchants"
+            onChange={(event) => {
+              setSearch(event.target.value)
+            }}
+            onKeyDown={onSearchKeyDown}
+            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-lg border px-3 py-1.5 text-sm outline-none focus-visible:ring-3"
+          />
+
+          {visible.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-8 text-center text-sm">
+              No merchant or category matches &ldquo;{search}&rdquo;.
+            </p>
+          ) : (
+            <ul className="max-h-[26rem] overflow-y-auto pr-1">
+              {visible.map((group) => {
+                const isActive = group.merchant === active?.merchant
+                return (
+                  <li
+                    key={group.merchant}
+                    ref={isActive ? activeRow : null}
+                    aria-current={isActive}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        moveTo(group.merchant)
+                      }}
+                      className={`flex w-full items-baseline gap-3 rounded-lg px-3 py-2 text-left text-sm ${
+                        isActive ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                    >
+                      <span className="flex-1 truncate">
+                        {group.merchant}
+                        {group.category && (
+                          <span className="text-muted-foreground ml-2 text-xs">
+                            {group.category}
+                            {group.subcategory ? ` › ${group.subcategory}` : ''}
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  <span className="text-muted-foreground shrink-0 tabular-nums">
-                    {group.count}×
-                  </span>
-                  <span className="w-24 shrink-0 text-right tabular-nums">
-                    {EUR.format(group.totalEur)}
-                  </span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
+                      <span className="text-muted-foreground shrink-0 tabular-nums">
+                        {group.count}×
+                      </span>
+                      <span className="w-24 shrink-0 text-right tabular-nums">
+                        {EUR.format(group.totalEur)}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
 
         <div className="group space-y-3">
           <div>
@@ -218,7 +271,7 @@ export function CategoriseScreen({
           </ul>
 
           <p className="text-muted-foreground text-xs">
-            Tab skips · Esc clears
+            Tab skips · Esc clears the box
           </p>
         </div>
       </div>
