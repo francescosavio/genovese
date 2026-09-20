@@ -11,7 +11,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { db } from '@/storage/db'
+import { clearEverything } from '@/storage/overrides'
 
 export function ClearDataButton({
   disabled,
@@ -25,8 +25,7 @@ export function ClearDataButton({
   const [open, setOpen] = useState(false)
 
   async function clear() {
-    await db.transactions.clear()
-    await db.merchants.clear()
+    await clearEverything()
     setOpen(false)
     onCleared()
   }

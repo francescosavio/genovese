@@ -57,3 +57,10 @@ export async function saveMerchantOverrides(
 ): Promise<void> {
   await db.merchants.bulkPut(merchantOverrides)
 }
+
+export async function clearEverything(): Promise<void> {
+  await db.transaction('rw', db.transactions, db.merchants, async () => {
+    await db.transactions.clear()
+    await db.merchants.clear()
+  })
+}

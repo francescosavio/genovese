@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'
 import { db, type MerchantOverride } from './db'
 import { importTransactions } from './import'
 import {
+  clearEverything,
   clearMerchantOverride,
   loadMerchantOverrides,
   setMerchantOverride,
@@ -172,5 +173,29 @@ describe('the merchant table travels in the file', () => {
 
     expect(merchantOverrides).toEqual([])
     expect(warnings.join(' ')).toMatch(/unknown category "Groceries"/)
+  })
+})
+
+describe('clearing everything', () => {
+  // Clearing only the transactions leaves mappings that would silently
+  // re-categorise the next import from data you thought you had deleted.
+  test('empties the merchant table as well as the transactions', async () => {
+    await importTransactions(result(tx('a')))
+    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+
+    await clearEverything()
+
+    expect(await db.transactions.count()).toBe(0)
+    expect(await db.merchants.count()).toBe(0)
+  })
+
+  test('a later import is not categorised by a mapping that was cleared', async () => {
+    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await clearEverything()
+
+    const report = await importTransactions(result(tx('b')))
+
+    expect(report).toMatchObject({ added: 1, categorised: 0 })
+    expect((await db.transactions.get('b'))?.category).toBeNull()
   })
 })
