@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react'
 import { SpendDonut } from '@/components/spend-donut'
 import { toSlices } from '@/components/spend-slices'
+import { SpendOverTime } from '@/components/spend-over-time'
 import {
   ALL,
   averages,
   monthsPresent,
   spendByBucket,
+  runningTotal,
+  spendOverTime,
   totals,
   uncategorised,
   yearsPresent,
   type Filter,
 } from '@/domain/summary'
+import { CATEGORIES, type Category } from '@/domain/categories'
 import type { Transaction } from '@/domain/transaction'
 
 const EUR = new Intl.NumberFormat('nl-NL', {
@@ -39,6 +43,9 @@ export function Dashboard({
   const years = useMemo(() => yearsPresent(transactions), [transactions])
   const [year, setYear] = useState<string | null>(null)
   const [month, setMonth] = useState<string>(WHOLE_YEAR)
+  // Scopes the plot only: filtering the donut to one category would leave it
+  // showing a single 100% slice.
+  const [plotCategory, setPlotCategory] = useState<Category | typeof ALL>(ALL)
 
   const shownYear = year ?? years[0] ?? ''
   const monthsInYear = useMemo(
@@ -59,6 +66,9 @@ export function Dashboard({
   const slices = toSlices(spendByBucket(transactions, filter))
   const outstanding = uncategorised(transactions)
   const average = averages(transactions, filter)
+  const series = runningTotal(
+    spendOverTime(transactions, { ...filter, category: plotCategory }),
+  )
   // An average over one month is just that month's total.
   const showAverages = activeMonth === WHOLE_YEAR && average.months > 1
 
@@ -180,6 +190,28 @@ export function Dashboard({
             </>
           )}
         </dl>
+      </div>
+
+      <div className="space-y-3 pt-2">
+        <label className="text-sm">
+          <span className="sr-only">Category shown in the plot</span>
+          <select
+            value={plotCategory}
+            onChange={(event) => {
+              setPlotCategory(event.target.value as Category | typeof ALL)
+            }}
+            className="border-input focus-visible:border-ring focus-visible:ring-ring/50 rounded-lg border px-3 py-1.5 outline-none focus-visible:ring-3"
+          >
+            <option value={ALL}>All categories</option>
+            {Object.keys(CATEGORIES).map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <SpendOverTime points={series} />
       </div>
     </div>
   )

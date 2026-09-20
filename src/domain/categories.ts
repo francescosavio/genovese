@@ -6,7 +6,7 @@ export const CATEGORIES = {
   Health: ['Medicine'],
   Sport: ['Swimming', 'Skiing'],
   Shopping: ['Clothing', 'Shoes', 'Tech'],
-  'Social Life': ['Bar', 'Friends'],
+  'Social Life': ['Bar', 'Friends', 'Restaurant'],
   Culture: ['Books'],
   Vacation: [],
   Subscription: [],

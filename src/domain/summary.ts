@@ -164,3 +164,64 @@ export function averages(
     receivedPerMonth: round2(all.received / months),
   }
 }
+
+export type TimePoint = { key: string; spent: number }
+
+const daysInMonth = (year: number, month: number) =>
+  new Date(Date.UTC(year, month, 0)).getUTCDate()
+
+// Daily inside any chosen period
+export function spendOverTime(
+  transactions: Transaction[],
+  filter: Filter,
+): TimePoint[] {
+  const daily = filter.period !== null
+  const sums = new Map<string, number>()
+
+  for (const tx of transactions) {
+    if (!matches(tx, filter)) continue
+    const amount = tx.amountEur ?? 0
+    if (amount >= 0) continue
+    const key = daily ? tx.date : monthOf(tx)
+    sums.set(key, (sums.get(key) ?? 0) - amount)
+  }
+
+  return bucketKeys(transactions, filter.period).map((key) => ({
+    key,
+    spent: round2(sums.get(key) ?? 0),
+  }))
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+const daysOfMonth = (year: number, month: number): string[] =>
+  Array.from(
+    { length: daysInMonth(year, month) },
+    (_, i) => `${year}-${pad(month)}-${pad(i + 1)}`,
+  )
+
+function bucketKeys(transactions: Transaction[], period: Period): string[] {
+  if (period === null) return monthsPresent(transactions).slice().reverse()
+
+  if (period.length === 7) {
+    const [year, month] = period.split('-').map(Number)
+    return daysOfMonth(year!, month!)
+  }
+
+  const year = Number(period)
+  return Array.from({ length: 12 }, (_, i) => i + 1).flatMap((month) =>
+    daysOfMonth(year, month),
+  )
+}
+
+export type CumulativePoint = TimePoint & { total: number }
+
+// The line plots the running total, so it only ever grows. Each point keeps
+// its own bucket's spend too, so the hover can show both.
+export function runningTotal(points: TimePoint[]): CumulativePoint[] {
+  let sum = 0
+  return points.map((point) => {
+    sum = round2(sum + point.spent)
+    return { ...point, total: sum }
+  })
+}
