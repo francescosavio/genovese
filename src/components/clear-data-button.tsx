@@ -26,6 +26,7 @@ export function ClearDataButton({
 
   async function clear() {
     await db.transactions.clear()
+    await db.merchants.clear()
     setOpen(false)
     onCleared()
   }
