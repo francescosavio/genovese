@@ -22,7 +22,8 @@ const TYPE_MAP: Record<string, TransactionType> = {
   atm: 'atm',
 }
 
-const TRANSFER_DIRECTION = /^(to|from)\s+/i
+const ROUTING_PREFIX = /^(payment from|to|from)\s+/i
+const ROUTED: ReadonlySet<TransactionType> = new Set(['transfer', 'topup'])
 
 const DATE_TIME = /^(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}$/
 
@@ -87,8 +88,8 @@ export const revolutAdapter: BankAdapter = {
         amountEur: isEur ? amountRaw : null,
         rawDescription,
         merchant: normaliseMerchant(
-          type === 'transfer'
-            ? rawDescription.replace(TRANSFER_DIRECTION, '')
+          ROUTED.has(type)
+            ? rawDescription.replace(ROUTING_PREFIX, '')
             : rawDescription,
         ),
         category: null,

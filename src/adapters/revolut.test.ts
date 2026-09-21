@@ -145,7 +145,7 @@ describe('fields', () => {
   })
 })
 
-describe('transfer descriptions', () => {
+describe('routing prefixes', () => {
   test.each([
     ['To Mario Rossi', 'mario rossi'],
     ['From Mario Rossi', 'mario rossi'],
@@ -154,7 +154,27 @@ describe('transfer descriptions', () => {
     expect(parseOne({ type: 'Transfer', description }).merchant).toBe(expected)
   })
 
-  test('the direction prefix is only stripped on transfers', () => {
+  test.each([
+    ['Payment from ALBERT HEIJN', 'albert heijn'],
+    ['Payment from HR F ROSSI', 'hr f rossi'],
+    ['Payment from PATHE THEATERS B.V.', 'pathe theaters b v'],
+  ])('a topup described %j becomes %j', (description, expected) => {
+    expect(parseOne({ type: 'Topup', description }).merchant).toBe(expected)
+  })
+
+  // Without this a refund is filed under a merchant that exists nowhere else,
+  // so it can never be netted against the shop it came from.
+  test('a refund shares its merchant key with the shop', () => {
+    const shop = parseOne({ type: 'Card Payment', description: 'Albert Heijn' })
+    const refund = parseOne({
+      type: 'Topup',
+      description: 'Payment from ALBERT HEIJN',
+      amount: '10.75',
+    })
+    expect(refund.merchant).toBe(shop.merchant)
+  })
+
+  test('the prefix is only stripped where Revolut writes one', () => {
     expect(
       parseOne({ type: 'Card Payment', description: 'To Go Coffee' }).merchant,
     ).toBe('to go coffee')
