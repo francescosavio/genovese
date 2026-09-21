@@ -2,7 +2,7 @@
 
 A personal expense tracker: reads bank data and shows insights in the browser. Data stays locally.
 
-*Supported banks. Revolut.*
+_Supported banks. Revolut._
 
 ## Why?
 
@@ -12,9 +12,10 @@ Money Manager).
 ## What?
 
 It's a personal expense tracker. It mainly does three things:
+
 1. Parses CSV bank statements into transactions. Core elements of a transaction are the amount and the merchant.
-2. Categorises transactions' merchants into a set of spending categories like: Grocery, Rent, Transport, etc.
-3. Visualises the transaction data in a dashboard
+2. Categorises transactions' merchants into a set of spending categories like: Grocery, Home, Transport, etc.
+3. Visualises the transaction data in a dashboard.
 
 ## How?
 
@@ -23,18 +24,30 @@ Data is stored in the excel file that can be exported via the export button. The
 source of truth of the application.
 
 The flow looks like:
-load CSV statement -> Assign categories to merchants -> Visualise the data -> Export the data
+load CSV statement -> Assign categories to merchants -> Visualise the data -> Export the data.
 
 An exported file can be loaded like a CSV statement. It carries the merchants-categories mapping.
 Multiple files can be loaded at a time.
+
+## Design decisions
+
+Some decisions worth explaining.
+
+### Spreadsheet as database
+
+This mainly comes from my personal need and from the experience that browsers are usually not reliable.
+
+My data is already saved in a spreadsheet. The database is already there, the unique source of truth is already there.
+
+If I mess up editing or the browser messes up I don't lose my already stored data -> I can manually manage file versions and backups with the export functionality. 
 
 ## Stack
 
 Runs entirely in the browser: no backend, no accounts, no network calls.
 
-- **UI** — React 19, TypeScript 6 (strict), Vite 8, Tailwind 4, shadcn/ui on Base UI
-- **Data** — Papa Parse (CSV), SheetJS (xlsx), Dexie 4 over IndexedDB for working state
-- **Tooling** — Vitest, oxlint, Prettier, pnpm 12 on Node 24
+- **UI** — React 19, TypeScript 6 (strict), Vite 8, Tailwind 4, shadcn/ui on Base UI.
+- **Data** — Papa Parse (CSV), SheetJS (xlsx), Dexie 4 over IndexedDB for working state.
+- **Tooling** — Vitest, oxlint, Prettier, pnpm 12 on Node 24.
 
 ## Deploy
 
@@ -51,4 +64,4 @@ Application will be live at http://localhost:5174/.
 
 ### GitHub pages
 
-TBD
+WIP
