@@ -5,7 +5,7 @@ import { CategoriseScreen } from '@/components/categorise-screen'
 import { Dashboard } from '@/components/dashboard'
 import { ClearDataButton } from '@/components/clear-data-button'
 import { Button } from '@/components/ui/button'
-import { TransactionTable } from '@/components/transaction-table'
+import { TransactionsTab } from '@/components/transactions-tab'
 import { db } from '@/storage/db'
 import { importTransactions, type ImportReport } from '@/storage/import'
 import { saveMerchantOverrides } from '@/storage/overrides'
@@ -180,7 +180,7 @@ export default function App() {
             <CategoriseScreen transactions={transactions} />
           )}
           {view === 'transactions' && (
-            <TransactionTable transactions={transactions} />
+            <TransactionsTab transactions={transactions} />
           )}
         </>
       )}
