@@ -39,7 +39,7 @@ This mainly comes from my personal need and from the experience that browsers ar
 
 My data is already saved in a spreadsheet. The database is already there, the unique source of truth is already there.
 
-If I mess up editing or the browser messes up I don't lose my already stored data -> I can manually manage file versions and backups with the export functionality. 
+If I mess up editing or the browser messes up I don't lose my already stored data -> I can manually manage file versions and backups with the export functionality.
 
 ## Stack
 

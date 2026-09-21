@@ -15,22 +15,31 @@ const REQUIRED_HEADERS = [
 
 const TYPE_MAP: Record<string, TransactionType> = {
   paymentterminal: 'card_payment',
-  ideal: 'card_payment',
   idealwero: 'card_payment',
-  'ideal|wero': 'card_payment',
+  ideal: 'card_payment',
+  transfer: 'transfer',
   onlinebanking: 'transfer',
   sepadirectdebit: 'transfer',
-  transfer: 'topup',
-  exchange: 'exchange',
+  various: 'fee',
   cashmachine: 'atm',
 }
 
-const DATE_TIME = /^(\d{4}\d{2}\d{2})$/
+const DATE = /^(\d{4})(\d{2})(\d{2})$/
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
 function mapType(raw: string): TransactionType {
   return TYPE_MAP[raw.toLowerCase().replace(/[^a-z]/g, '')] ?? 'other'
+}
+
+// Dutch formatting: "1.358,00"
+function parseAmount(raw: string): number {
+  const text = raw.trim()
+  const normalised = text.includes(',')
+    ? text.replace(/\./g, '').replace(',', '.')
+    : text
+  const value = Number(normalised)
+  return Number.isFinite(value) ? value : NaN
 }
 
 export const ingAdapter: BankAdapter = {
@@ -53,52 +62,49 @@ export const ingAdapter: BankAdapter = {
 
     for (const row of data) {
       const rawDescription = (row['Name / Description'] ?? '').trim()
-      const dateRaw = (row.Date ?? '').trim()
-      const date = DATE_TIME.exec(dateRaw)?.[1]
-      const amount = Number((row['Amount (EUR)'] ?? '').replace(',', '.'))
-      const currency = 'EUR'
-      const credit  = row['Debit/credit'] === 'Credit'
+      const parts = DATE.exec((row.Date ?? '').trim())
+      const date = parts ? `${parts[1]}-${parts[2]}-${parts[3]}` : undefined
+      const magnitude = parseAmount(row['Amount (EUR)'] ?? '')
+      const direction = (row['Debit/credit'] ?? '').trim().toLowerCase()
 
-      if (!date || !currency || Number.isNaN(amount)) {
+      if (!date || Number.isNaN(magnitude) || direction === '') {
         skipped.push({
           reason: 'unparsable',
-          detail: rawDescription,
+          detail: (row.Date ?? '').trim(),
           rawDescription,
         })
         continue
       }
 
-      const amountRaw = round2(amount)
-      const type = mapType(row['Transaction type'] ?? '')
-      const isEur = currency === 'EUR'
-
+      // ING always writes a positive number and puts the direction in its own
+      // column, so the sign has to be reassembled here.
+      const amountRaw = round2(direction === 'credit' ? magnitude : -magnitude)
 
       transactions.push({
+        // Notifications holds the bank's own reference, date carries not time.
         id: contentHash(
-            // we don't have the seconds but very unlikely to collide
-          `ing|${date}|${currency}|${amountRaw}|${rawDescription}`,
+          `ing|${date}|EUR|${amountRaw}|${rawDescription}|${(row.Notifications ?? '').trim()}`,
         ),
         date,
-        currency,
+        currency: 'EUR', // the export is a single-currency account
         amountRaw,
-        amountEur: isEur ? amountRaw : null,
+        amountEur: amountRaw,
         rawDescription,
         merchant: normaliseMerchant(rawDescription),
         category: null,
         subcategory: null,
         account: (row.Account ?? '').trim(),
         sourceBank: 'ing',
-        type,
-        excluded: credit,
-        exclusionReason: !isEur
-          ? 'non_eur'
-          : credit
-            ? 'internal_transfer'
-            : null,
+        type: mapType(row['Transaction type'] ?? ''),
+        // Nothing is excluded automatically. Salary, refunds and transfers to
+        // my own accounts cannot be told apart by rule, so they are classified
+        // by hand like everything else.
+        excluded: false,
+        exclusionReason: null,
         notes: '',
       })
     }
-    console.info(transactions)
+
     return { transactions, skipped }
   },
 }

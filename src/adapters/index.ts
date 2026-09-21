@@ -1,15 +1,17 @@
+import Papa from 'papaparse'
 import type { BankAdapter } from '@/domain/bank-adapter'
+import { ingAdapter } from './ing'
 import { revolutAdapter } from './revolut'
-import {ingAdapter} from "@/adapters/ing.ts";
 
 export const ADAPTERS: BankAdapter[] = [revolutAdapter, ingAdapter]
 
 export function adapterFor(csv: string): BankAdapter | null {
-  const headers = (csv.split(/\r?\n/, 1)[0] ?? '')
-    .split(',') // need to support ; delimiter
-    .map((h) => h.trim())
-    .map((h) => h.replaceAll("\"", ''))
-
-  console.info('headers', headers)
+  // Papa finds the delimiter and unquotes the header itself. Splitting on a
+  // comma breaks on ING, whose headers are quoted, and on any bank using ";".
+  const { data } = Papa.parse<string[]>(csv, {
+    preview: 1,
+    skipEmptyLines: true,
+  })
+  const headers = (data[0] ?? []).map((h) => h.trim())
   return ADAPTERS.find((a) => a.detect(headers)) ?? null
 }
