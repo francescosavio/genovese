@@ -2,7 +2,7 @@
 
 A personal expense tracker: reads bank data and shows insights in the browser. Data stays locally.
 
-![img.png](public/dashboard.png)
+![img.png](doc/dashboard.png)
 
 _Supported banks: Revolut, ING, Mediolanum._
 
