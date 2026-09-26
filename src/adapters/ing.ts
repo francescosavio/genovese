@@ -42,8 +42,8 @@ function parseAmount(raw: string): number {
   return Number.isFinite(value) ? value : NaN
 }
 
-export const ingAdapter: BankAdapter = {
-  id: 'ing',
+export const ingAdapter = {
+  id: 'ing' as const,
   label: 'ING',
 
   detect(headers) {
@@ -100,4 +100,4 @@ export const ingAdapter: BankAdapter = {
 
     return { transactions, skipped }
   },
-}
+} satisfies BankAdapter

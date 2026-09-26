@@ -3,6 +3,7 @@ import {
   type Category,
   type Subcategory,
 } from '@/domain/categories'
+import { isBankId } from '@/adapters'
 import type { Transaction } from '@/domain/transaction'
 import type { MerchantOverride } from './db'
 import * as XLSX from 'xlsx'
@@ -173,9 +174,14 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
     const id = asText(row.id)
     const date = asText(row.date)
     const amount = asNumber(row.amount)
+    const sourceBank = asText(row.sourceBank)
 
     if (id === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || amount === null) {
       warn('missing id, date or amount, skipped')
+      return
+    }
+    if (!isBankId(sourceBank)) {
+      warn(`unknown bank "${sourceBank}", skipped`)
       return
     }
 
@@ -189,7 +195,7 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
       category: null,
       subcategory: null,
       account: asText(row.account),
-      sourceBank: asText(row.sourceBank) === 'ing' ? 'ing' : 'revolut',
+      sourceBank,
       type: asText(row.type) as Transaction['type'],
       notes: asText(row.notes),
     })

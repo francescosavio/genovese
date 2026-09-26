@@ -33,8 +33,8 @@ function mapType(raw: string): TransactionType {
   return TYPE_MAP[raw.toLowerCase().replace(/[^a-z]/g, '')] ?? 'other'
 }
 
-export const revolutAdapter: BankAdapter = {
-  id: 'revolut',
+export const revolutAdapter = {
+  id: 'revolut' as const,
   label: 'Revolut',
 
   detect(headers) {
@@ -106,4 +106,4 @@ export const revolutAdapter: BankAdapter = {
 
     return { transactions, skipped }
   },
-}
+} satisfies BankAdapter

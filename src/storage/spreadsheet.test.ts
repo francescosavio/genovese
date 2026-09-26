@@ -183,11 +183,23 @@ describe('reading a file manually edited', () => {
     const book = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(
       book,
-      XLSX.utils.json_to_sheet([row]),
+      XLSX.utils.json_to_sheet([{ sourceBank: 'revolut', ...row }]),
       SHEETS.transactions,
     )
     return fromWorkbook(book)
   }
+
+  // Defaulting would quietly re-label the rows of a bank added later.
+  test('an unknown bank is reported, not guessed', () => {
+    const { transactions, warnings } = sheetWith({
+      id: 'a',
+      date: '2026-09-01',
+      amount: -1,
+      sourceBank: 'abn',
+    })
+    expect(transactions).toEqual([])
+    expect(warnings[0]).toMatch(/unknown bank "abn"/)
+  })
 
   // Hand-editing the category column changes nothing on import, so the
   // column is not read at all rather than read and ignored.

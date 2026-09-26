@@ -1,6 +1,7 @@
 import type { Category, Subcategory } from './categories'
 
-export type BankId = 'revolut' | 'ing'
+export type { BankId } from '@/adapters'
+import type { BankId } from '@/adapters'
 
 // Canonical types
 export type TransactionType =

@@ -1,9 +1,15 @@
 import Papa from 'papaparse'
 import type { BankAdapter } from '@/domain/bank-adapter'
 import { ingAdapter } from './ing'
+import { mediolanumAdapter } from './mediolanum'
 import { revolutAdapter } from './revolut'
 
-export const ADAPTERS: BankAdapter[] = [revolutAdapter, ingAdapter]
+export const ADAPTERS = [revolutAdapter, ingAdapter, mediolanumAdapter] as const
+
+export type BankId = (typeof ADAPTERS)[number]['id']
+
+export const isBankId = (value: string): value is BankId =>
+  ADAPTERS.some((a) => a.id === value)
 
 export function adapterFor(csv: string): BankAdapter | null {
   // Papa finds the delimiter and unquotes the header itself. Splitting on a

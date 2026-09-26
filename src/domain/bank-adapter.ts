@@ -1,4 +1,4 @@
-import type { BankId, Transaction } from './transaction'
+import type { Transaction } from './transaction'
 
 export type SkipReason = 'not_completed' | 'not_eur' | 'unparsable'
 
@@ -14,7 +14,7 @@ export type ParseResult = {
 }
 
 export type BankAdapter = {
-  id: BankId
+  id: string
   label: string
   detect(headers: string[]): boolean
   parse(csv: string): ParseResult
