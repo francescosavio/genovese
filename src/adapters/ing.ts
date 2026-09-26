@@ -96,11 +96,6 @@ export const ingAdapter: BankAdapter = {
         account: (row.Account ?? '').trim(),
         sourceBank: 'ing',
         type: mapType(row['Transaction type'] ?? ''),
-        // Nothing is excluded automatically. Salary, refunds and transfers to
-        // my own accounts cannot be told apart by rule, so they are classified
-        // by hand like everything else.
-        excluded: false,
-        exclusionReason: null,
         notes: '',
       })
     }

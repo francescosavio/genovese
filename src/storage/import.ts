@@ -1,4 +1,5 @@
 import type { ParseResult } from '@/domain/bank-adapter'
+import { inEur } from '@/domain/transaction'
 import { db } from './db'
 import { applyMerchantOverrides, loadMerchantOverrides } from './overrides'
 
@@ -6,7 +7,7 @@ export type ImportReport = {
   added: number
   duplicates: number
   categorised: number
-  excluded: number
+  excluded: number // not in EUR
   skipped: number
 }
 
@@ -35,7 +36,7 @@ export async function importTransactions({
       added: fresh.length,
       duplicates: transactions.length - fresh.length,
       categorised: fresh.filter((t) => t.category !== null).length,
-      excluded: fresh.filter((t) => t.excluded).length,
+      excluded: fresh.filter((t) => !inEur(t)).length,
       skipped: skipped.length,
     }
   })

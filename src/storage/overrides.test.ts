@@ -8,7 +8,6 @@ import { importTransactions } from './import'
 import {
   clearEverything,
   clearMerchantOverride,
-  setMerchantNotSpending,
   loadMerchantOverrides,
   setMerchantCategory,
 } from './overrides'
@@ -28,8 +27,6 @@ function tx(id: string, over: Partial<Transaction> = {}): Transaction {
     account: 'Current',
     sourceBank: 'revolut',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -198,52 +195,5 @@ describe('clearing everything', () => {
 
     expect(report).toMatchObject({ added: 1, categorised: 0 })
     expect((await db.transactions.get('b'))?.category).toBeNull()
-  })
-})
-
-describe('marking a merchant as not spending', () => {
-  test('excludes every transaction of that merchant', async () => {
-    await importTransactions(result(tx('a'), tx('b')))
-
-    await setMerchantNotSpending('albert heijn')
-
-    const rows = await db.transactions.toArray()
-    expect(rows.every((r) => r.excluded)).toBe(true)
-    expect(rows[0]?.exclusionReason).toBe('not_spending')
-  })
-
-  test('a later import of that merchant is excluded too', async () => {
-    await setMerchantNotSpending('albert heijn')
-
-    const report = await importTransactions(result(tx('new')))
-
-    expect(report).toMatchObject({ added: 1, excluded: 1 })
-    expect(await db.transactions.get('new')).toMatchObject({
-      excluded: true,
-      exclusionReason: 'not_spending',
-    })
-  })
-
-  // Otherwise a mis-click would be unrecoverable: the merchant would vanish.
-  test('choosing a category afterwards puts the money back', async () => {
-    await importTransactions(result(tx('a')))
-    await setMerchantNotSpending('albert heijn')
-
-    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
-
-    expect(await db.transactions.get('a')).toMatchObject({
-      excluded: false,
-      exclusionReason: null,
-      category: 'Food',
-    })
-  })
-
-  test('the mark is a decision, so it carries no category', async () => {
-    await setMerchantNotSpending('hr f savio')
-    expect((await loadMerchantOverrides()).get('hr f savio')).toMatchObject({
-      excluded: true,
-      category: null,
-      subcategory: null,
-    })
   })
 })

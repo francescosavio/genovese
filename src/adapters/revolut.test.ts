@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { inEur } from '@/domain/transaction'
 import { revolutAdapter } from './revolut'
 
 const HEADERS =
@@ -73,27 +74,26 @@ describe('type mapping', () => {
   })
 })
 
-describe('exclusions', () => {
+describe('currency', () => {
   test('a topup is not assumed to be money from my own bank', () => {
     expect(parseOne({ type: 'Topup', amount: '500.00' })).toMatchObject({
-      excluded: false,
-      exclusionReason: null,
+      amountEur: 500,
+      category: null,
     })
   })
 
-  test('a non-EUR row is kept but excluded, with its amount intact', () => {
+  test('a non-EUR row is kept with its amount, but has no EUR value', () => {
     const tx = parseOne({ currency: 'USD', amount: '-20.00' })
     expect(tx).toMatchObject({
-      excluded: true,
-      exclusionReason: 'non_eur',
       currency: 'USD',
       amountRaw: -20,
       amountEur: null,
     })
+    expect(inEur(tx)).toBe(false)
   })
 
-  test('an ordinary card payment is not excluded', () => {
-    expect(parseOne()).toMatchObject({ excluded: false, exclusionReason: null })
+  test('an ordinary card payment counts', () => {
+    expect(inEur(parseOne())).toBe(true)
   })
 })
 

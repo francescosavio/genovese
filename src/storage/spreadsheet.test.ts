@@ -24,8 +24,6 @@ function tx(over: Partial<Transaction> = {}): Transaction {
     account: 'Current',
     sourceBank: 'revolut',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -126,8 +124,6 @@ describe('round trip', () => {
         amountRaw: -20,
         amountEur: null,
         merchant: null,
-        excluded: true,
-        exclusionReason: 'non_eur',
         type: 'transfer',
       }),
     ]
@@ -136,14 +132,12 @@ describe('round trip', () => {
         merchant: 'albert heijn',
         category: 'Food',
         subcategory: 'Groceries',
-        excluded: false,
         updatedAt: '2026-09-19T10:00:00.000Z',
       },
       {
         merchant: 'netflix',
         category: 'Subscription',
         subcategory: null,
-        excluded: false,
         updatedAt: '2026-09-19T10:00:00.000Z',
       },
     ]
@@ -215,16 +209,6 @@ describe('reading a file manually edited', () => {
     expect(warnings[0]).toMatch(/not a sub-category of Car/)
   })
 
-  test('TRUE typed over a boolean still reads as excluded', () => {
-    const { transactions } = sheetWith({
-      id: 'a',
-      date: '2026-09-01',
-      amountRaw: -1,
-      excluded: 'TRUE',
-    })
-    expect(transactions[0]?.excluded).toBe(true)
-  })
-
   test('a row with no id is skipped and reported', () => {
     const { transactions, warnings } = sheetWith({
       date: '2026-09-01',
@@ -251,21 +235,8 @@ describe('reading a file manually edited', () => {
   })
 })
 
-describe('the not-spending flag travels in the file', () => {
-  test('survives export and import', () => {
-    const mapping: MerchantOverride = {
-      merchant: 'hr f savio',
-      category: null,
-      subcategory: null,
-      excluded: true,
-      updatedAt: '2026-09-19T10:00:00.000Z',
-    }
-    const { merchantOverrides, warnings } = roundTrip([], [mapping])
-    expect(warnings).toEqual([])
-    expect(merchantOverrides).toEqual([mapping])
-  })
-
-  test('a row naming neither a category nor the flag is reported', () => {
+describe('merchant mappings without a category', () => {
+  function merchantsSheet(row: Record<string, unknown>) {
     const book = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(
       book,
@@ -274,11 +245,30 @@ describe('the not-spending flag travels in the file', () => {
     )
     XLSX.utils.book_append_sheet(
       book,
-      XLSX.utils.json_to_sheet([{ merchant: 'mystery', updatedAt: '' }]),
+      XLSX.utils.json_to_sheet([row]),
       SHEETS.merchants,
     )
-    const { merchantOverrides, warnings } = fromWorkbook(book)
+    return fromWorkbook(book)
+  }
+
+  test('a row with no category is skipped and reported', () => {
+    const { merchantOverrides, warnings } = merchantsSheet({
+      merchant: 'mystery',
+      updatedAt: '',
+    })
     expect(merchantOverrides).toEqual([])
-    expect(warnings.join(' ')).toMatch(/not marked as not spending/)
+    expect(warnings.join(' ')).toMatch(/no category for "mystery"/)
+  })
+
+  // Salary or transfer is not guessed; the merchant goes back to the list.
+  test('an old not-spending mark comes back uncategorised, with a warning', () => {
+    const { merchantOverrides, warnings } = merchantsSheet({
+      merchant: 'hr f savio',
+      category: '',
+      excluded: 'TRUE',
+      updatedAt: '',
+    })
+    expect(merchantOverrides).toEqual([])
+    expect(warnings.join(' ')).toMatch(/"hr f savio" was marked not spending/)
   })
 })

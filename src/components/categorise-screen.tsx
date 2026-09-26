@@ -5,10 +5,7 @@ import {
 } from '@/domain/category-options'
 import { coverage, groupByMerchant } from '@/domain/merchant-groups'
 import type { Transaction } from '@/domain/transaction'
-import {
-  setMerchantCategory,
-  setMerchantNotSpending,
-} from '@/storage/overrides'
+import { setMerchantCategory } from '@/storage/overrides'
 
 const EUR = new Intl.NumberFormat('nl-NL', {
   style: 'currency',
@@ -95,13 +92,11 @@ export function CategoriseScreen({
     if (!active) return
     // Worked out before the write, because groups is about to change.
     const next = nextAfter(active.merchant)
-    await (option.kind === 'not-spending'
-      ? setMerchantNotSpending(active.merchant)
-      : setMerchantCategory(
-          active.merchant,
-          option.category,
-          option.subcategory,
-        ))
+    await setMerchantCategory(
+      active.merchant,
+      option.category,
+      option.subcategory,
+    )
     moveTo(next)
   }
 

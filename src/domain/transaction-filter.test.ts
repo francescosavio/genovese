@@ -16,8 +16,6 @@ function tx(over: Partial<Transaction> = {}): Transaction {
     account: 'NL77INGB0111635837',
     sourceBank: 'ing',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -29,8 +27,8 @@ describe('views', () => {
     tx({ merchant: 'bar cadaq', category: null, subcategory: null }),
     tx({
       merchant: 'amazon us',
-      excluded: true,
-      exclusionReason: 'non_eur',
+      currency: 'USD',
+      amountEur: null,
       category: null,
       subcategory: null,
     }),
@@ -40,14 +38,14 @@ describe('views', () => {
     expect(filterTransactions(data, 'all')).toHaveLength(3)
   })
 
-  test('excluded shows only the rows kept out of the totals', () => {
+  test('excluded shows only the rows not in EUR', () => {
     expect(filterTransactions(data, 'excluded').map((t) => t.merchant)).toEqual(
       ['amazon us'],
     )
   })
 
   // Otherwise the tab and the coverage bar would disagree about what is left.
-  test('an excluded row is never counted as uncategorised work', () => {
+  test('a non-EUR row is never counted as uncategorised work', () => {
     expect(
       filterTransactions(data, 'uncategorised').map((t) => t.merchant),
     ).toEqual(['bar cadaq'])
@@ -86,7 +84,7 @@ describe('search', () => {
 
   test('search and view narrow together', () => {
     const rows = [
-      tx({ merchant: 'albert heijn', excluded: true }),
+      tx({ merchant: 'albert heijn', amountEur: null }),
       tx({ merchant: 'albert heijn' }),
     ]
     expect(filterTransactions(rows, 'excluded', 'albert')).toHaveLength(1)

@@ -28,8 +28,6 @@ const TRANSACTION_COLUMNS = [
   'account',
   'sourceBank',
   'type',
-  'excluded',
-  'exclusionReason',
   'notes',
 ] as const satisfies readonly (keyof Transaction)[]
 
@@ -43,7 +41,6 @@ const MERCHANT_COLUMNS = [
   'merchant',
   'category',
   'subcategory',
-  'excluded',
   'updatedAt',
 ] as const satisfies readonly (keyof MerchantOverride)[]
 
@@ -62,11 +59,7 @@ export function toWorkbook(
 
   const merchantRows = [...merchantOverrides]
     .sort((a, b) => a.merchant.localeCompare(b.merchant))
-    .map((o) => ({
-      ...o,
-      category: o.category ?? '',
-      subcategory: o.subcategory ?? '',
-    }))
+    .map((o) => ({ ...o, subcategory: o.subcategory ?? '' }))
   XLSX.utils.book_append_sheet(
     book,
     XLSX.utils.json_to_sheet(merchantRows, {
@@ -131,9 +124,6 @@ function asNumber(v: unknown): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-// Sheets may hand back a real boolean or the text manually written
-const asBoolean = (v: unknown): boolean =>
-  typeof v === 'boolean' ? v : /^(true|1|yes)$/i.test(asText(v))
 
 function readCategory(
   row: Record<string, unknown>,
@@ -148,7 +138,8 @@ function readCategory(
     return { category: null, subcategory: null }
   }
 
-  const valid = CATEGORIES[category as Category] as readonly string[]
+  const valid = CATEGORIES[category as Category]
+    .subcategories as readonly string[]
   if (subcategory !== null && !valid.includes(subcategory)) {
     warn(`"${subcategory}" is not a sub-category of ${category}, dropped`)
     return { category: category as Category, subcategory: null }
@@ -203,10 +194,6 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
       account: asText(row.account),
       sourceBank: asText(row.sourceBank) === 'ing' ? 'ing' : 'revolut',
       type: asText(row.type) as Transaction['type'],
-      excluded: asBoolean(row.excluded),
-      exclusionReason: asOptional(
-        row.exclusionReason,
-      ) as Transaction['exclusionReason'],
       notes: asText(row.notes),
     })
   })
@@ -248,18 +235,16 @@ function readMerchants(
       const warn = (message: string) =>
         warnings.push(`merchants row ${index + 2}: ${message}`)
       const { category, subcategory } = readCategory(row, warn)
-      const excluded = asBoolean(row.excluded)
 
-      // This may only happen if the file is manually modified.
-      if (category === null && !excluded) {
-        warn(`no category and not marked as not spending for "${merchant}"`)
+      if (category === null) {
+        // This should never happen.
+        warn(`no category for "${merchant}"`)
         return
       }
       merchantOverrides.push({
         merchant,
-        category: excluded ? null : category,
-        subcategory: excluded ? null : subcategory,
-        excluded,
+        category,
+        subcategory,
         updatedAt: asText(row.updatedAt),
       })
     })

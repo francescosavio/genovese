@@ -1,10 +1,9 @@
-import type { Category } from './categories'
-import type { Transaction } from './transaction'
+import { flowOf, type Category } from './categories'
+import { inEur, type Transaction } from './transaction'
 
 export type MonthKey = string // YYYY-MM
 
 // A date prefix: "2026" is a year, "2026-09" is a month, null is everything.
-// One field instead of two, and selecting a period is a startsWith.
 export type Period = string | null
 
 export const ALL = 'all' as const
@@ -22,8 +21,6 @@ export type Filter = {
 export const UNCATEGORISED = 'Uncategorised' as const
 export type Bucket = Category | typeof UNCATEGORISED
 
-const spendable = (tx: Transaction) => !tx.excluded && tx.amountEur !== null
-
 export const monthOf = (tx: Transaction): MonthKey => tx.date.slice(0, 7)
 
 export const yearOf = (tx: Transaction): string => tx.date.slice(0, 4)
@@ -35,14 +32,14 @@ export function monthsPresent(
   return [
     ...new Set(
       transactions
-        .filter((tx) => spendable(tx) && inPeriod(tx, within))
+        .filter((tx) => inEur(tx) && inPeriod(tx, within))
         .map(monthOf),
     ),
   ].sort((a, b) => b.localeCompare(a))
 }
 
 export function yearsPresent(transactions: Transaction[]): string[] {
-  return [...new Set(transactions.filter(spendable).map(yearOf))].sort((a, b) =>
+  return [...new Set(transactions.filter(inEur).map(yearOf))].sort((a, b) =>
     b.localeCompare(a),
   )
 }
@@ -50,8 +47,9 @@ export function yearsPresent(transactions: Transaction[]): string[] {
 const inPeriod = (tx: Transaction, period: Period) =>
   period === null || tx.date.startsWith(period)
 
+// Spending only: income and transfers never match.
 export function matches(tx: Transaction, filter: Filter): boolean {
-  if (!spendable(tx)) return false
+  if (!inEur(tx) || flowOf(tx.category) !== 'expense') return false
   if (!inPeriod(tx, filter.period)) return false
   if (filter.category !== ALL && tx.category !== filter.category) return false
   return true
@@ -59,25 +57,20 @@ export function matches(tx: Transaction, filter: Filter): boolean {
 
 export type Totals = {
   spent: number // net of refunds; positive means money left
-  setAside: number // money in rows I marked as not spending
+  income: number
 }
 
-// Spending and income are kept apart
-// Spending is netted rather than split from income, because after a refund
-// is netted the only money left arriving is money I marked as not spending.
+// The category's flow decides which side a row lands on, so a refund nets
+// into its expense and a transfer counts as neither.
 export function totals(transactions: Transaction[], filter: Filter): Totals {
   let spent = 0
-  let setAside = 0
+  let income = 0
   for (const tx of transactions) {
-    if (!inPeriod(tx, filter.period)) continue
-    const amount = tx.amountEur ?? 0
-    if (tx.excluded) {
-      if (tx.exclusionReason === 'not_spending') setAside += amount
-    } else if (matches(tx, filter)) {
-      spent -= amount
-    }
+    if (!inEur(tx) || !inPeriod(tx, filter.period)) continue
+    if (matches(tx, filter)) spent -= tx.amountEur
+    else if (flowOf(tx.category) === 'income') income += tx.amountEur
   }
-  return { spent: round2(spent), setAside: round2(setAside) }
+  return { spent: round2(spent), income: round2(income) }
 }
 
 export type BucketTotal = {
@@ -132,9 +125,7 @@ export function spendByMonth(
 export type Outstanding = { count: number; total: number }
 
 export function uncategorised(transactions: Transaction[]): Outstanding {
-  const rows = transactions.filter(
-    (tx) => spendable(tx) && tx.category === null,
-  )
+  const rows = transactions.filter((tx) => inEur(tx) && tx.category === null)
   return {
     count: rows.length,
     total: round2(
@@ -149,11 +140,11 @@ const round2 = (n: number) => Math.round(n * 100) / 100 + 0
 export type Averages = {
   months: number
   spentPerMonth: number
-  setAsidePerMonth: number
+  incomePerMonth: number
 }
 
 // Averaged over the months inside the selected period that actually have
-// data. Meaningless for a single month, which is why the dashboard hides it.
+// data.
 export function averages(
   transactions: Transaction[],
   filter: Filter,
@@ -161,12 +152,12 @@ export function averages(
   const months = new Set(
     transactions.filter((tx) => matches(tx, filter)).map(monthOf),
   ).size
-  if (months === 0) return { months: 0, spentPerMonth: 0, setAsidePerMonth: 0 }
+  if (months === 0) return { months: 0, spentPerMonth: 0, incomePerMonth: 0 }
   const all = totals(transactions, filter)
   return {
     months,
     spentPerMonth: round2(all.spent / months),
-    setAsidePerMonth: round2(all.setAside / months),
+    incomePerMonth: round2(all.income / months),
   }
 }
 

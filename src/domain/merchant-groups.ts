@@ -1,5 +1,5 @@
 import type { Category, Subcategory } from './categories'
-import type { Transaction } from './transaction'
+import { inEur, type Transaction } from './transaction'
 
 export type MerchantGroup = {
   merchant: string
@@ -8,17 +8,15 @@ export type MerchantGroup = {
   totalEur: number
   category: Category | null
   subcategory: Subcategory | null
-  excluded: boolean // marked as not spending
 }
 
-// Non-EUR rows have no value to show and are not work. Rows I marked as not
-// spending stay: otherwise the merchant would vanish and I could never
-// change my mind about it.
-const groupable = (tx: Transaction) =>
-  tx.merchant !== null && tx.exclusionReason !== 'non_eur'
+type Groupable = Transaction & { merchant: string; amountEur: number }
 
-// Work, not exclusion: a merchant I marked as not spending is decided.
-const decided = (g: MerchantGroup) => g.category !== null || g.excluded
+// Non-EUR rows have no value to show and are not work.
+const groupable = (tx: Transaction): tx is Groupable =>
+  tx.merchant !== null && inEur(tx)
+
+const decided = (g: MerchantGroup) => g.category !== null
 
 // Undecided first, then sorted by value
 function byImpact(a: MerchantGroup, b: MerchantGroup): number {
@@ -30,26 +28,25 @@ export function groupByMerchant(transactions: Transaction[]): MerchantGroup[] {
   const groups = new Map<string, MerchantGroup>()
 
   for (const tx of transactions) {
-    if (!groupable(tx) || tx.merchant === null) continue
+    if (!groupable(tx)) continue
 
-    const notSpending = tx.exclusionReason === 'not_spending'
     const existing = groups.get(tx.merchant)
     if (existing) {
+      // append case
       existing.count += 1
-      existing.totalEur += tx.amountEur ?? 0
+      existing.totalEur += tx.amountEur
       // A merchant is decided if any of its transactions is.
       existing.category ??= tx.category
       existing.subcategory ??= tx.subcategory
-      existing.excluded ||= notSpending
     } else {
+      // group creation
       groups.set(tx.merchant, {
         merchant: tx.merchant,
         sample: tx.rawDescription,
         count: 1,
-        totalEur: tx.amountEur ?? 0,
+        totalEur: tx.amountEur,
         category: tx.category,
         subcategory: tx.subcategory,
-        excluded: notSpending,
       })
     }
   }
@@ -67,7 +64,7 @@ export type Coverage = {
 
 // Measured in transactions
 export function coverage(transactions: Transaction[]): Coverage {
-  const countables = transactions.filter((tx) => !tx.excluded)
+  const countables = transactions.filter(inEur)
   const categorised = countables.filter((tx) => tx.category !== null).length
   return {
     categorised,

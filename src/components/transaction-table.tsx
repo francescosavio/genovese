@@ -1,4 +1,4 @@
-import type { Transaction } from '@/domain/transaction'
+import { inEur, type Transaction } from '@/domain/transaction'
 
 const EUR = new Intl.NumberFormat('nl-NL', {
   style: 'currency',
@@ -29,20 +29,16 @@ export function TransactionTable({
       </thead>
       <tbody>
         {transactions.map((tx) => (
-          <tr
-            key={tx.id}
-            className="border-border/60 border-b last:border-0"
-            data-excluded={tx.excluded}
-          >
+          <tr key={tx.id} className="border-border/60 border-b last:border-0">
             <td className="text-muted-foreground py-2 pr-4 tabular-nums">
               {tx.date}
             </td>
             <td className="py-2 pr-4">{tx.merchant ?? '—'}</td>
             <td className="text-muted-foreground py-2 pr-4">
               {tx.rawDescription}
-              {tx.excluded && (
+              {!inEur(tx) && (
                 <span className="text-muted-foreground/70 ml-2 text-xs">
-                  excluded · {tx.exclusionReason}
+                  excluded · not in EUR
                 </span>
               )}
             </td>
@@ -59,13 +55,13 @@ export function TransactionTable({
                 </span>
               ) : (
                 <span className="text-muted-foreground/60">
-                  {tx.excluded ? '—' : 'uncategorised'}
+                  {inEur(tx) ? 'uncategorised' : '—'}
                 </span>
               )}
             </td>
             <td
               className={`py-2 pl-4 text-right tabular-nums ${
-                tx.excluded ? 'text-muted-foreground/60 line-through' : ''
+                inEur(tx) ? '' : 'text-muted-foreground/60 line-through'
               }`}
             >
               {amount(tx)}

@@ -15,7 +15,7 @@ import {
   yearsPresent,
   type Filter,
 } from '@/domain/summary'
-import { CATEGORIES, type Category } from '@/domain/categories'
+import { EXPENSE_CATEGORIES, type Category } from '@/domain/categories'
 import type { Transaction } from '@/domain/transaction'
 
 const EUR = new Intl.NumberFormat('nl-NL', {
@@ -163,7 +163,7 @@ export function Dashboard({
 
         <dl className="divide-border min-w-56 divide-y text-sm md:ml-auto">
           <Stat label="Spent" value={period.spent} />
-          <Stat label="Set aside" value={period.setAside} />
+          <Stat label="Income" value={period.income} />
           {showAverages && (
             <>
               <Stat
@@ -172,8 +172,8 @@ export function Dashboard({
                 note={`avg of ${average.months}`}
               />
               <Stat
-                label="Set aside / month"
-                value={average.setAsidePerMonth}
+                label="Income / month"
+                value={average.incomePerMonth}
                 note={`avg of ${average.months}`}
               />
             </>
@@ -192,7 +192,7 @@ export function Dashboard({
             className="border-input focus-visible:border-ring focus-visible:ring-ring/50 rounded-lg border px-3 py-1.5 outline-none focus-visible:ring-3"
           >
             <option value={ALL}>All categories</option>
-            {Object.keys(CATEGORIES).map((name) => (
+            {EXPENSE_CATEGORIES.map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>

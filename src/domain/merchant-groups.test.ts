@@ -17,8 +17,6 @@ function tx(over: Partial<Transaction> = {}): Transaction {
     account: 'Current',
     sourceBank: 'revolut',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -37,13 +35,13 @@ describe('grouping', () => {
     })
   })
 
-  test('excluded rows are neither work nor coverage', () => {
+  test('non-EUR rows are neither work nor coverage', () => {
     expect(
       groupByMerchant([
         tx({
           merchant: 'amazon us',
-          excluded: true,
-          exclusionReason: 'non_eur',
+          currency: 'USD',
+          amountEur: null,
         }),
       ]),
     ).toEqual([])
@@ -94,11 +92,11 @@ describe('coverage', () => {
     ).toEqual({ categorised: 2, total: 3, percent: 67 })
   })
 
-  test('excluded rows do not drag the bar down', () => {
+  test('non-EUR rows do not drag the bar down', () => {
     expect(
       coverage([
         tx({ category: 'Food' }),
-        tx({ merchant: 'amazon us', excluded: true }),
+        tx({ merchant: 'amazon us', amountEur: null }),
       ]),
     ).toMatchObject({ percent: 100 })
   })
@@ -109,12 +107,10 @@ describe('coverage', () => {
 })
 
 describe('category search', () => {
-  test('not spending is offered alongside the categories', () => {
-    expect(CATEGORY_OPTIONS.at(-1)).toEqual({
-      kind: 'not-spending',
-      label: 'Not spending',
-    })
-    expect(searchCategories('not spend')[0]?.kind).toBe('not-spending')
+  // Marking the salary is ordinary categorising, not a separate control.
+  test('salary and transfers are offered like any category', () => {
+    expect(searchCategories('salary')[0]?.label).toBe('Salary')
+    expect(searchCategories('transfers')[0]?.label).toBe('Transfers')
   })
 
   test('a category is offered with and without its sub-categories', () => {
@@ -135,7 +131,6 @@ describe('category search', () => {
   test('picking a bare category means no sub-category, not an empty one', () => {
     const [food] = searchCategories('food')
     expect(food).toEqual({
-      kind: 'category',
       category: 'Food',
       subcategory: null,
       label: 'Food',

@@ -1,33 +1,25 @@
 import { CATEGORIES, type Category, type Subcategory } from './categories'
 
-// Marking a merchant as not spending is a decision like any other, so it is
-// an option in the same list and needs no separate control.
-export const NOT_SPENDING = 'Not spending'
-
-export type CategoryOption =
-  | {
-      kind: 'category'
-      category: Category
-      subcategory: Subcategory | null
-      label: string
-    }
-  | { kind: 'not-spending'; label: typeof NOT_SPENDING }
+export type CategoryOption = {
+  category: Category
+  subcategory: Subcategory | null
+  label: string
+}
 
 // Flattened and category only is showed as an option
-export const CATEGORY_OPTIONS: CategoryOption[] = Object.entries(CATEGORIES)
-  .flatMap(([category, subcategories]): CategoryOption[] => {
-    const parent = category as Category
-    return [
-      { kind: 'category', category: parent, subcategory: null, label: parent },
-      ...(subcategories as readonly Subcategory[]).map((subcategory) => ({
-        kind: 'category' as const,
-        category: parent,
-        subcategory,
-        label: `${parent} › ${subcategory}`,
-      })),
-    ]
-  })
-  .concat({ kind: 'not-spending', label: NOT_SPENDING })
+export const CATEGORY_OPTIONS: CategoryOption[] = Object.entries(
+  CATEGORIES,
+).flatMap(([category, { subcategories }]): CategoryOption[] => {
+  const parent = category as Category
+  return [
+    { category: parent, subcategory: null, label: parent },
+    ...(subcategories as readonly Subcategory[]).map((subcategory) => ({
+      category: parent,
+      subcategory,
+      label: `${parent} › ${subcategory}`,
+    })),
+  ]
+})
 
 type Score = { tier: number; at: number }
 

@@ -14,8 +14,6 @@ export function applyMerchantOverrides(
       ...tx,
       category: override.category,
       subcategory: override.subcategory,
-      excluded: override.excluded,
-      exclusionReason: override.excluded ? 'not_spending' : tx.exclusionReason,
     }
   })
 }
@@ -28,49 +26,24 @@ export async function loadMerchantOverrides(): Promise<
 }
 
 // One decision, applied to every transaction of that merchant at once.
-function write(
-  merchant: string,
-  override: Omit<MerchantOverride, 'merchant' | 'updatedAt'>,
-  now: Date,
-): Promise<number> {
-  return db.transaction('rw', db.merchants, db.transactions, async () => {
-    await db.merchants.put({
-      merchant,
-      ...override,
-      updatedAt: now.toISOString(),
-    })
-    return db.transactions
-      .where('merchant')
-      .equals(merchant)
-      .modify({
-        category: override.category,
-        subcategory: override.subcategory,
-        excluded: override.excluded,
-        exclusionReason: override.excluded ? 'not_spending' : null,
-      })
-  })
-}
-
 export function setMerchantCategory(
   merchant: string,
   category: Category,
   subcategory: Subcategory | null,
   now = new Date(),
 ): Promise<number> {
-  return write(merchant, { category, subcategory, excluded: false }, now)
-}
-
-// Money moved between my own accounts, or put aside rather than spent. It is
-// still imported and still visible; it just is not spending.
-export function setMerchantNotSpending(
-  merchant: string,
-  now = new Date(),
-): Promise<number> {
-  return write(
-    merchant,
-    { category: null, subcategory: null, excluded: true },
-    now,
-  )
+  return db.transaction('rw', db.merchants, db.transactions, async () => {
+    await db.merchants.put({
+      merchant,
+      category,
+      subcategory,
+      updatedAt: now.toISOString(),
+    })
+    return db.transactions
+      .where('merchant')
+      .equals(merchant)
+      .modify({ category, subcategory })
+  })
 }
 
 // Forgets the mapping. Transactions keep what they were given

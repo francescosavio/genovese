@@ -60,7 +60,7 @@ pnpm dev      # dev server with hot reload
 pnpm build    # type-check + produce dist/
 ```
 
-Application will be live at http://localhost:5174/.
+Application will be live at http://localhost:5173/.
 
 ### GitHub pages
 

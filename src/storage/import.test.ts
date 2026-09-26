@@ -19,8 +19,6 @@ function tx(id: string, over: Partial<Transaction> = {}): Transaction {
     account: 'Current',
     sourceBank: 'revolut',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -50,7 +48,7 @@ describe('first import', () => {
 
   test('counts excluded rows separately from added', async () => {
     const report = await importTransactions(
-      result(tx('a'), tx('b', { excluded: true, exclusionReason: 'non_eur' })),
+      result(tx('a'), tx('b', { currency: 'USD', amountEur: null })),
     )
     expect(report).toMatchObject({ added: 2, excluded: 1 })
   })

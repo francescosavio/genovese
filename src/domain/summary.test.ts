@@ -28,8 +28,6 @@ function tx(over: Partial<Transaction> = {}): Transaction {
     account: 'Current',
     sourceBank: 'revolut',
     type: 'card_payment',
-    excluded: false,
-    exclusionReason: null,
     notes: '',
     ...over,
   }
@@ -48,17 +46,16 @@ describe('months present', () => {
     ).toEqual(['2026-09', '2024-01'])
   })
 
-  test('excluded rows do not create a month of their own', () => {
-    expect(monthsPresent([tx({ date: '2025-05-01', excluded: true })])).toEqual(
-      [],
-    )
+  test('non-EUR rows do not create a month of their own', () => {
+    expect(
+      monthsPresent([tx({ date: '2025-05-01', amountEur: null })]),
+    ).toEqual([])
   })
 })
 
 describe('totals', () => {
   // A refund is money coming back, so it genuinely does reduce what a period
-  // cost. Salary and transfers between my own accounts must not, which is
-  // what the not-spending mark is for.
+  // cost. Salary and transfers must not, which is what the flow is for.
   test('a refund reduces what the period cost', () => {
     const { spent } = totals(
       [tx({ amountEur: -100 }), tx({ amountEur: 30 })],
@@ -67,35 +64,43 @@ describe('totals', () => {
     expect(spent).toBe(70)
   })
 
-  test('money marked as not spending never cancels out spending', () => {
+  test('salary is income and never cancels out spending', () => {
     expect(
       totals(
         [
           tx({ amountEur: -40 }),
-          tx({
-            amountEur: 4140.36,
-            excluded: true,
-            exclusionReason: 'not_spending',
-          }),
+          tx({ amountEur: 4140.36, category: 'Salary', subcategory: null }),
         ],
         everything,
       ),
-    ).toEqual({ spent: 40, setAside: 4140.36 })
+    ).toEqual({ spent: 40, income: 4140.36 })
   })
 
-  test('a non-EUR row is neither spending nor set aside', () => {
+  test('a transfer is neither spending nor income, in either direction', () => {
     expect(
       totals(
-        [tx({ amountEur: null, excluded: true, exclusionReason: 'non_eur' })],
+        [
+          tx({ amountEur: -500, category: 'Transfers', subcategory: null }),
+          tx({ amountEur: 200, category: 'Transfers', subcategory: null }),
+        ],
         everything,
       ),
-    ).toEqual({ spent: 0, setAside: 0 })
+    ).toEqual({ spent: 0, income: 0 })
   })
 
-  test('excluded rows are not spending', () => {
+  test('uncategorised money counts as spending until decided', () => {
     expect(
-      totals([tx({ amountEur: -20, excluded: true })], everything).spent,
-    ).toBe(0)
+      totals(
+        [tx({ amountEur: -15, category: null, subcategory: null })],
+        everything,
+      ).spent,
+    ).toBe(15)
+  })
+
+  test('a non-EUR row is neither spending nor income', () => {
+    expect(
+      totals([tx({ currency: 'USD', amountEur: null })], everything),
+    ).toEqual({ spent: 0, income: 0 })
   })
 
   test('a month period selects by the transaction date', () => {
@@ -118,6 +123,18 @@ describe('totals', () => {
 })
 
 describe('spend by bucket', () => {
+  test('salary and transfers are not slices of spending', () => {
+    const ranked = spendByBucket(
+      [
+        tx({ category: 'Food', amountEur: -30 }),
+        tx({ category: 'Salary', subcategory: null, amountEur: 4000 }),
+        tx({ category: 'Transfers', subcategory: null, amountEur: -500 }),
+      ],
+      everything,
+    )
+    expect(ranked.map((r) => r.bucket)).toEqual(['Food'])
+  })
+
   test('ranks categories by how much left, biggest first', () => {
     const ranked = spendByBucket(
       [
@@ -223,8 +240,8 @@ describe('outstanding work', () => {
     })
   })
 
-  test('excluded rows are not outstanding work', () => {
-    expect(uncategorised([tx({ category: null, excluded: true })]).count).toBe(
+  test('non-EUR rows are not outstanding work', () => {
+    expect(uncategorised([tx({ category: null, amountEur: null })]).count).toBe(
       0,
     )
   })
@@ -239,7 +256,30 @@ describe('averages', () => {
     expect(averages(data, { period: '2026', category: ALL })).toEqual({
       months: 2,
       spentPerMonth: 150,
-      setAsidePerMonth: 0,
+      incomePerMonth: 0,
+    })
+  })
+
+  test('income is averaged over the same months', () => {
+    const data = [
+      tx({ date: '2026-01-05', amountEur: -100 }),
+      tx({
+        date: '2026-01-25',
+        category: 'Salary',
+        subcategory: null,
+        amountEur: 3000,
+      }),
+      tx({ date: '2026-02-05', amountEur: -100 }),
+      tx({
+        date: '2026-02-25',
+        category: 'Salary',
+        subcategory: null,
+        amountEur: 3200,
+      }),
+    ]
+    expect(averages(data, { period: '2026', category: ALL })).toMatchObject({
+      months: 2,
+      incomePerMonth: 3100,
     })
   })
 
@@ -255,7 +295,7 @@ describe('averages', () => {
     expect(averages([], everything)).toEqual({
       months: 0,
       spentPerMonth: 0,
-      setAsidePerMonth: 0,
+      incomePerMonth: 0,
     })
   })
 })

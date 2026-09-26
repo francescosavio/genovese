@@ -138,17 +138,12 @@ describe('identity', () => {
   })
 })
 
-// Salary, refunds and transfers to my own accounts cannot be told apart by
-// rule, so nothing is excluded at import and they are classified by hand.
-describe('nothing is excluded by guesswork', () => {
+describe('nothing is classified by guesswork', () => {
   test.each([
     ['MX3D B.V.', 'Credit', '4.140,36'],
     ['Albert Heijn', 'Credit', '5,93'],
     ['Francesco Savio', 'Debit', '500,00'],
-  ])('%j %j %j is kept in the totals', (description, direction, amount) => {
-    expect(parseOne({ description, direction, amount })).toMatchObject({
-      excluded: false,
-      exclusionReason: null,
-    })
+  ])('%j %j %j arrives uncategorised', (description, direction, amount) => {
+    expect(parseOne({ description, direction, amount }).category).toBeNull()
   })
 })
