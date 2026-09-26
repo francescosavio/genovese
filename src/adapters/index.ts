@@ -11,6 +11,9 @@ export type BankId = (typeof ADAPTERS)[number]['id']
 export const isBankId = (value: string): value is BankId =>
   ADAPTERS.some((a) => a.id === value)
 
+export const bankLabel = (id: BankId): string =>
+  ADAPTERS.find((a) => a.id === id)?.label ?? id
+
 export function adapterFor(csv: string): BankAdapter | null {
   // Papa finds the delimiter and unquotes the header itself. Splitting on a
   // comma breaks on ING, whose headers are quoted, and on any bank using ";".
