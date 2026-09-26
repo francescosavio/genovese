@@ -73,7 +73,7 @@ describe('coverage', () => {
       coverage([
         tx({ merchant: 'albert heijn', category: 'Food' }),
         tx({ merchant: 'albert heijn', category: 'Food' }),
-        tx({ merchant: 'bar cadaq', category: null }),
+        tx({ merchant: 'bar luna', category: null }),
       ]),
     ).toEqual({ categorised: 2, total: 3, percent: 67 })
   })

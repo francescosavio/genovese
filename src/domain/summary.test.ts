@@ -61,11 +61,11 @@ describe('totals', () => {
       totals(
         [
           tx({ amount: -40 }),
-          tx({ amount: 4140.36, category: 'Salary', subcategory: null }),
+          tx({ amount: 3000, category: 'Salary', subcategory: null }),
         ],
         everything,
       ),
-    ).toEqual({ spent: 40, income: 4140.36 })
+    ).toEqual({ spent: 40, income: 3000 })
   })
 
   test('a transfer is neither spending nor income, in either direction', () => {

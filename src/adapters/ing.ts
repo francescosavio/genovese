@@ -32,7 +32,7 @@ function mapType(raw: string): TransactionType {
   return TYPE_MAP[raw.toLowerCase().replace(/[^a-z]/g, '')] ?? 'other'
 }
 
-// Dutch formatting: "1.358,00"
+// Dutch formatting: "1.234,00"
 function parseAmount(raw: string): number {
   const text = raw.trim()
   const normalised = text.includes(',')

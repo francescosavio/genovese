@@ -32,7 +32,13 @@ const COUNTERPARTY = [
   /PRG\.CAR\.: \S+ \S+ (.+?) - /, // direct debit: after the mandate ids
   /^EMOLUMENTI (.+?) NOTE:/, // salary
   /^DISPOSIZIONE VS\. FAVORE (.+?) VAL\. ACCREDITO/, // transfer in
-  /^(?:BONIFICO - SEPA ISTANTANEO|BONIFICO SEPA|VOSTRA DISPOSIZIONE(?: A FAV\.)?) (.+?) (?:BONIFICO DISPOSTO|VAL\. ACCREDITO)/, // transfer, either way
+  /^BONIFICO (?:- SEPA ISTANTANEO )?A VS\.? FAVORE (?:DA )?(.+?) (?:NOTE:|DATA REGOLAMENTO)/, // transfer in
+  /^(?:BONIFICO - SEPA ISTANTANEO|BONIFICO SEPA|BONIFICO PERMANENTE(?: A FAV\.)?|VOSTRA DISPOSIZIONE(?: A FAV\.)?) (.+?),? (?:BONIFICO DISPOSTO|VAL\. ACCREDITO)/, // transfer, either way
+  /^PAGAMENTO NEXI \d+ (.+?) - /, // credit card bill
+  /^RIMBORSO FONDI COMUNI DI INVESTIMENTO (.+?) NOTE:/, // fund redemption
+  // Fixed wording with a varying tail: the wording is the merchant.
+  /^(IMPOSTA DI BOLLO)/,
+  /^(ACCREDITO RIMBORSO SALDO PREPA ?GATA)/,
 ]
 
 const DATE = /^(\d{2})\/(\d{2})\/(\d{4})$/

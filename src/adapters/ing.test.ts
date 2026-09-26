@@ -21,13 +21,13 @@ function row(r: Row = {}): string {
   return [
     r.date ?? '20260821',
     r.description ?? 'Albert Heijn',
-    'NL77INGB0111635837',
-    r.counterparty ?? 'NL04ADYB2017400157',
+    'NL00INGB0000000000',
+    r.counterparty ?? 'NL00ADYB0000000000',
     'IW',
     r.direction ?? 'Debit',
     r.amount ?? '59,55',
     r.type ?? 'iDEAL | Wero',
-    r.notifications ?? 'Reference: 7180314110778858',
+    r.notifications ?? 'Reference: 0000000000000001',
   ]
     .map(q)
     .join(',')
@@ -79,8 +79,8 @@ describe('direction', () => {
 describe('Dutch number format', () => {
   test.each([
     ['59,55', -59.55],
-    ['1.358,00', -1358],
-    ['4.140,36', -4140.36],
+    ['1.234,00', -1234],
+    ['4.567,89', -4567.89],
     ['3,55', -3.55],
   ])('%j parses to %s', (amount, expected) => {
     expect(parseOne({ amount }).amount).toBe(expected)
@@ -138,9 +138,9 @@ describe('identity', () => {
 
 describe('nothing is classified by guesswork', () => {
   test.each([
-    ['MX3D B.V.', 'Credit', '4.140,36'],
+    ['Acme B.V.', 'Credit', '3.000,00'],
     ['Albert Heijn', 'Credit', '5,93'],
-    ['Francesco Savio', 'Debit', '500,00'],
+    ['Test User', 'Debit', '500,00'],
   ])('%j %j %j arrives uncategorised', (description, direction, amount) => {
     expect(parseOne({ description, direction, amount }).category).toBeNull()
   })

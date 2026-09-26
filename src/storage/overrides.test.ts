@@ -53,7 +53,7 @@ async function resolved(id: string): Promise<Transaction | undefined> {
 describe('assigning a merchant', () => {
   test('categorises every transaction of that merchant at once', async () => {
     await importTransactions(
-      result(tx('a'), tx('b'), tx('c', { merchant: 'solebox' })),
+      result(tx('a'), tx('b'), tx('c', { merchant: 'shoe shop' })),
     )
 
     await setMerchantCategory('albert heijn', 'Food', 'Groceries')
@@ -132,7 +132,7 @@ describe('a later import', () => {
     await setMerchantCategory('albert heijn', 'Food', 'Groceries')
 
     const report = await importTransactions(
-      result(tx('x', { merchant: 'bar cadaq' })),
+      result(tx('x', { merchant: 'bar luna' })),
     )
 
     expect(report).toMatchObject({ added: 1, categorised: 0 })

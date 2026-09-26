@@ -194,12 +194,12 @@ describe('identity', () => {
       csv(
         row({
           started: '2026-09-01 09:15:00',
-          description: 'Bar Cadaq',
+          description: 'Bar Luna',
           amount: '-3.50',
         }),
         row({
           started: '2026-09-01 16:42:00',
-          description: 'Bar Cadaq',
+          description: 'Bar Luna',
           amount: '-3.50',
         }),
       ),

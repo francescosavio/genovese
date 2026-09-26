@@ -177,8 +177,59 @@ describe('counterparty', () => {
       'VOSTRA DISPOSIZIONE ACME SIM S.P.A. C-TERZI - BANCA ACME BONIFICO DISPOSTO IN: INTERNET CRO: 0000 NOTE: CODICE CLIENTE',
       'ACME SIM S.P.A. C-TERZI - BANCA ACME',
     ],
+    [
+      'transfer in, with DA',
+      'BONIFICO A VS. FAVORE DA MARIO ROSSI NOTE: RIMBORSO DATA REGOLAMENTO: 06/07/26 COD.ID.ORD: NL00 TEST 0000 CRO: ABC',
+      'MARIO ROSSI',
+    ],
+    [
+      'transfer in, without DA',
+      'BONIFICO A VS. FAVORE ACME PAYMENTS S.A. NOTE: 0000 DATA REGOLAMENTO: 01/01/26 CRO: 1',
+      'ACME PAYMENTS S.A.',
+    ],
+    [
+      'instant transfer in, no note',
+      'BONIFICO - SEPA ISTANTANEO A VS FAVORE ANNA BIANCHI DATA REGOLAMENTO: 15/03/26 COD.ID.ORD: IT00 X000 CRO: 1',
+      'ANNA BIANCHI',
+    ],
+    [
+      'standing order to a company',
+      'BONIFICO PERMANENTE ACME SIM S.P.A. C-TERZI - BANCA ACME BONIFICO DISPOSTO IN: ACCENTRATO COOR.BENEF.: IT00 X000',
+      'ACME SIM S.P.A. C-TERZI - BANCA ACME',
+    ],
+    [
+      'standing order to a person, stray comma',
+      'BONIFICO PERMANENTE A FAV. LUIGI VERDI, BONIFICO DISPOSTO IN: ACCENTRATO COOR.BENEF.: IT00 X000 CRO: 1',
+      'LUIGI VERDI',
+    ],
+    [
+      'credit card bill',
+      'PAGAMENTO NEXI 8000000000000000000001 ACME CARDS S.P.A. - ADDE BITO SPESE CARTA DI CREDITO ESTRATTO CONTO DEL : 31/ 05/2026',
+      'ACME CARDS S.P.A.',
+    ],
+    [
+      'fund redemption',
+      'RIMBORSO FONDI COMUNI DI INVESTIMENTO ACME FUND ITALIA NOTE: 000 DATA REGOLAMENTO: 30/07/26',
+      'ACME FUND ITALIA',
+    ],
   ])('%s', (_, description, expected) => {
     expect(counterparty(description)).toBe(expected)
+  })
+
+  // Same wording each time with a period or reference tacked on, so each
+  // would otherwise be a merchant of its own.
+  test.each([
+    'IMPOSTA DI BOLLO SU RENDICONTO RECUPERO PERIODO DAL 01/01/25 AL 31/03/25',
+    'IMPOSTA DI BOLLO SU RENDICONTO RECUPERO PERIODO DAL 01/10/24 AL 31/12/24',
+    'IMPOSTA DI BOLLO ART.13 C.2 TER DPR 642/72 RECUPERO IMPOSTA DA F ONDO 000',
+  ])('stamp duty is one merchant: %s', (description) => {
+    expect(counterparty(description)).toBe('IMPOSTA DI BOLLO')
+  })
+
+  test('the prepaid card refund drops its card number', () => {
+    expect(
+      counterparty('ACCREDITO RIMBORSO SALDO PREPA GATA 000000*****0000'),
+    ).toBe('ACCREDITO RIMBORSO SALDO PREPA GATA')
   })
 
   test('joint holders in either order are one merchant', () => {
@@ -211,7 +262,9 @@ describe('counterparty', () => {
   // A new shape shows up as a one-off merchant, which is visible, instead of
   // being folded into some other merchant by a loose guess.
   test('an unknown shape keeps the whole description', () => {
-    expect(counterparty('IMPOSTA DI BOLLO')).toBe('IMPOSTA DI BOLLO')
+    expect(counterparty('COMMISSIONI PAGAMENTI PAESI NON UE')).toBe(
+      'COMMISSIONI PAGAMENTI PAESI NON UE',
+    )
   })
 })
 
