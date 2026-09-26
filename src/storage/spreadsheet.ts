@@ -7,7 +7,7 @@ import type { Transaction } from '@/domain/transaction'
 import type { MerchantOverride } from './db'
 import * as XLSX from 'xlsx'
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const SHEETS = {
   transactions: 'transactions',
@@ -43,6 +43,7 @@ const MERCHANT_COLUMNS = [
   'merchant',
   'category',
   'subcategory',
+  'excluded',
   'updatedAt',
 ] as const satisfies readonly (keyof MerchantOverride)[]
 
@@ -61,7 +62,11 @@ export function toWorkbook(
 
   const merchantRows = [...merchantOverrides]
     .sort((a, b) => a.merchant.localeCompare(b.merchant))
-    .map((o) => ({ ...o, subcategory: o.subcategory ?? '' }))
+    .map((o) => ({
+      ...o,
+      category: o.category ?? '',
+      subcategory: o.subcategory ?? '',
+    }))
   XLSX.utils.book_append_sheet(
     book,
     XLSX.utils.json_to_sheet(merchantRows, {
@@ -243,14 +248,18 @@ function readMerchants(
       const warn = (message: string) =>
         warnings.push(`merchants row ${index + 2}: ${message}`)
       const { category, subcategory } = readCategory(row, warn)
-      if (category === null) {
-        warn(`no usable category for "${merchant}", mapping dropped`)
+      const excluded = asBoolean(row.excluded)
+
+      // This may only happen if the file is manually modified.
+      if (category === null && !excluded) {
+        warn(`no category and not marked as not spending for "${merchant}"`)
         return
       }
       merchantOverrides.push({
         merchant,
-        category,
-        subcategory,
+        category: excluded ? null : category,
+        subcategory: excluded ? null : subcategory,
+        excluded,
         updatedAt: asText(row.updatedAt),
       })
     })

@@ -6,8 +6,7 @@ export type BankId = 'revolut' | 'ing'
 export type TransactionType =
   'card_payment' | 'transfer' | 'topup' | 'exchange' | 'atm' | 'fee' | 'other'
 
-export type ExclusionReason =
-  'non_eur' | 'internal_transfer' | 'investment' | 'manual'
+export type ExclusionReason = 'non_eur' | 'not_spending'
 
 export type Transaction = {
   id: string // content hash of sourceBank + date + currency + amountRaw + rawDescription

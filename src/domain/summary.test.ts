@@ -56,18 +56,40 @@ describe('months present', () => {
 })
 
 describe('totals', () => {
-  test('spending and income are reported apart, both positive', () => {
-    expect(
-      totals([tx({ amountEur: -40 }), tx({ amountEur: 500 })], everything),
-    ).toEqual({ spent: 40, received: 500 })
-  })
-
-  test('a refund cannot make the period look cheaper than it was', () => {
+  // A refund is money coming back, so it genuinely does reduce what a period
+  // cost. Salary and transfers between my own accounts must not, which is
+  // what the not-spending mark is for.
+  test('a refund reduces what the period cost', () => {
     const { spent } = totals(
       [tx({ amountEur: -100 }), tx({ amountEur: 30 })],
       everything,
     )
-    expect(spent).toBe(100)
+    expect(spent).toBe(70)
+  })
+
+  test('money marked as not spending never cancels out spending', () => {
+    expect(
+      totals(
+        [
+          tx({ amountEur: -40 }),
+          tx({
+            amountEur: 4140.36,
+            excluded: true,
+            exclusionReason: 'not_spending',
+          }),
+        ],
+        everything,
+      ),
+    ).toEqual({ spent: 40, setAside: 4140.36 })
+  })
+
+  test('a non-EUR row is neither spending nor set aside', () => {
+    expect(
+      totals(
+        [tx({ amountEur: null, excluded: true, exclusionReason: 'non_eur' })],
+        everything,
+      ),
+    ).toEqual({ spent: 0, setAside: 0 })
   })
 
   test('excluded rows are not spending', () => {
@@ -131,8 +153,23 @@ describe('spend by bucket', () => {
     expect(ranked[0]).toMatchObject({ bucket: UNCATEGORISED, total: 90 })
   })
 
-  test('income is not part of spending', () => {
-    expect(spendByBucket([tx({ amountEur: 500 })], everything)).toEqual([])
+  test('a refund lands in its own category rather than posing as income', () => {
+    const ranked = spendByBucket(
+      [
+        tx({ category: 'Food', amountEur: -50 }),
+        tx({ category: 'Food', amountEur: 10 }),
+      ],
+      everything,
+    )
+    expect(ranked).toEqual([{ bucket: 'Food', total: 40, share: 1 }])
+  })
+
+  test('a category can end a period negative, and that is real', () => {
+    const [only] = spendByBucket(
+      [tx({ category: 'Shopping', amountEur: 120 })],
+      everything,
+    )
+    expect(only?.total).toBe(-120)
   })
 
   test('an empty period is empty, not a division by zero', () => {
@@ -202,7 +239,7 @@ describe('averages', () => {
     expect(averages(data, { period: '2026', category: ALL })).toEqual({
       months: 2,
       spentPerMonth: 150,
-      receivedPerMonth: 0,
+      setAsidePerMonth: 0,
     })
   })
 
@@ -218,7 +255,7 @@ describe('averages', () => {
     expect(averages([], everything)).toEqual({
       months: 0,
       spentPerMonth: 0,
-      receivedPerMonth: 0,
+      setAsidePerMonth: 0,
     })
   })
 })

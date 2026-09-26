@@ -8,8 +8,9 @@ import { importTransactions } from './import'
 import {
   clearEverything,
   clearMerchantOverride,
+  setMerchantNotSpending,
   loadMerchantOverrides,
-  setMerchantOverride,
+  setMerchantCategory,
 } from './overrides'
 import { SHEETS, fromWorkbook, toWorkbook } from './spreadsheet'
 
@@ -50,7 +51,7 @@ describe('assigning a merchant', () => {
       result(tx('a'), tx('b'), tx('c', { merchant: 'solebox' })),
     )
 
-    const touched = await setMerchantOverride(
+    const touched = await setMerchantCategory(
       'albert heijn',
       'Food',
       'Groceries',
@@ -65,7 +66,7 @@ describe('assigning a merchant', () => {
   })
 
   test('is remembered as a mapping, not just on the rows', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
     expect((await loadMerchantOverrides()).get('albert heijn')).toMatchObject({
       category: 'Food',
       subcategory: 'Groceries',
@@ -73,8 +74,8 @@ describe('assigning a merchant', () => {
   })
 
   test('re-assigning replaces the old mapping', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
-    await setMerchantOverride('albert heijn', 'Home', 'Kitchen')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Home', 'Kitchen')
 
     const overrides = await loadMerchantOverrides()
     expect(overrides.size).toBe(1)
@@ -83,7 +84,7 @@ describe('assigning a merchant', () => {
 
   test('forgetting a mapping leaves the transactions categorised', async () => {
     await importTransactions(result(tx('a')))
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
     await clearMerchantOverride('albert heijn')
 
     expect(await db.merchants.count()).toBe(0)
@@ -94,7 +95,7 @@ describe('assigning a merchant', () => {
 // This is the "never asks again" promise of the whole app.
 describe('a later import', () => {
   test('auto-categorises a merchant decided in an earlier session', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
 
     const report = await importTransactions(result(tx('new')))
 
@@ -106,7 +107,7 @@ describe('a later import', () => {
   })
 
   test('leaves unknown merchants alone rather than guessing', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
 
     const report = await importTransactions(
       result(tx('x', { merchant: 'bar cadaq' })),
@@ -117,7 +118,7 @@ describe('a later import', () => {
   })
 
   test('a row with no merchant is never matched', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
     await importTransactions(result(tx('y', { merchant: null })))
     expect((await db.transactions.get('y'))?.category).toBeNull()
   })
@@ -139,8 +140,8 @@ describe('the merchant table travels in the file', () => {
     )
 
   test('what Dexie stores is exactly what the file carries', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
-    await setMerchantOverride('netflix', 'Subscription', null)
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('netflix', 'Subscription', null)
 
     const { merchantOverrides, warnings } = roundTrip(
       [],
@@ -181,7 +182,7 @@ describe('clearing everything', () => {
   // re-categorise the next import from data you thought you had deleted.
   test('empties the merchant table as well as the transactions', async () => {
     await importTransactions(result(tx('a')))
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
 
     await clearEverything()
 
@@ -190,12 +191,59 @@ describe('clearing everything', () => {
   })
 
   test('a later import is not categorised by a mapping that was cleared', async () => {
-    await setMerchantOverride('albert heijn', 'Food', 'Groceries')
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
     await clearEverything()
 
     const report = await importTransactions(result(tx('b')))
 
     expect(report).toMatchObject({ added: 1, categorised: 0 })
     expect((await db.transactions.get('b'))?.category).toBeNull()
+  })
+})
+
+describe('marking a merchant as not spending', () => {
+  test('excludes every transaction of that merchant', async () => {
+    await importTransactions(result(tx('a'), tx('b')))
+
+    await setMerchantNotSpending('albert heijn')
+
+    const rows = await db.transactions.toArray()
+    expect(rows.every((r) => r.excluded)).toBe(true)
+    expect(rows[0]?.exclusionReason).toBe('not_spending')
+  })
+
+  test('a later import of that merchant is excluded too', async () => {
+    await setMerchantNotSpending('albert heijn')
+
+    const report = await importTransactions(result(tx('new')))
+
+    expect(report).toMatchObject({ added: 1, excluded: 1 })
+    expect(await db.transactions.get('new')).toMatchObject({
+      excluded: true,
+      exclusionReason: 'not_spending',
+    })
+  })
+
+  // Otherwise a mis-click would be unrecoverable: the merchant would vanish.
+  test('choosing a category afterwards puts the money back', async () => {
+    await importTransactions(result(tx('a')))
+    await setMerchantNotSpending('albert heijn')
+
+    await setMerchantCategory('albert heijn', 'Food', 'Groceries')
+
+    expect(await db.transactions.get('a')).toMatchObject({
+      excluded: false,
+      exclusionReason: null,
+      category: 'Food',
+    })
+  })
+
+  test('the mark is a decision, so it carries no category', async () => {
+    await setMerchantNotSpending('hr f savio')
+    expect((await loadMerchantOverrides()).get('hr f savio')).toMatchObject({
+      excluded: true,
+      category: null,
+      subcategory: null,
+    })
   })
 })

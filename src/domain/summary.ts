@@ -58,21 +58,26 @@ export function matches(tx: Transaction, filter: Filter): boolean {
 }
 
 export type Totals = {
-  spent: number // positive: money that left
-  received: number // positive: money that arrived
+  spent: number // net of refunds; positive means money left
+  setAside: number // money in rows I marked as not spending
 }
 
 // Spending and income are kept apart
+// Spending is netted rather than split from income, because after a refund
+// is netted the only money left arriving is money I marked as not spending.
 export function totals(transactions: Transaction[], filter: Filter): Totals {
   let spent = 0
-  let received = 0
+  let setAside = 0
   for (const tx of transactions) {
-    if (!matches(tx, filter)) continue
+    if (!inPeriod(tx, filter.period)) continue
     const amount = tx.amountEur ?? 0
-    if (amount < 0) spent -= amount
-    else received += amount
+    if (tx.excluded) {
+      if (tx.exclusionReason === 'not_spending') setAside += amount
+    } else if (matches(tx, filter)) {
+      spent -= amount
+    }
   }
-  return { spent: round2(spent), received: round2(received) }
+  return { spent: round2(spent), setAside: round2(setAside) }
 }
 
 export type BucketTotal = {
@@ -87,12 +92,12 @@ export function spendByBucket(
 ): BucketTotal[] {
   const sums = new Map<Bucket, number>()
 
+  // Signed, so a refund reduces the category it came from instead of posing
+  // as income. A category can end a period negative, which is real.
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
-    const amount = tx.amountEur ?? 0
-    if (amount >= 0) continue
     const bucket: Bucket = tx.category ?? UNCATEGORISED
-    sums.set(bucket, (sums.get(bucket) ?? 0) - amount)
+    sums.set(bucket, (sums.get(bucket) ?? 0) - (tx.amountEur ?? 0))
   }
 
   const spent = [...sums.values()].reduce((a, b) => a + b, 0)
@@ -144,7 +149,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100 + 0
 export type Averages = {
   months: number
   spentPerMonth: number
-  receivedPerMonth: number
+  setAsidePerMonth: number
 }
 
 // Averaged over the months inside the selected period that actually have
@@ -156,12 +161,12 @@ export function averages(
   const months = new Set(
     transactions.filter((tx) => matches(tx, filter)).map(monthOf),
   ).size
-  if (months === 0) return { months: 0, spentPerMonth: 0, receivedPerMonth: 0 }
+  if (months === 0) return { months: 0, spentPerMonth: 0, setAsidePerMonth: 0 }
   const all = totals(transactions, filter)
   return {
     months,
     spentPerMonth: round2(all.spent / months),
-    receivedPerMonth: round2(all.received / months),
+    setAsidePerMonth: round2(all.setAside / months),
   }
 }
 

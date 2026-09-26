@@ -97,12 +97,8 @@ export const revolutAdapter: BankAdapter = {
         account: (row.Product ?? '').trim(),
         sourceBank: 'revolut',
         type,
-        excluded: !isEur || type === 'topup',
-        exclusionReason: !isEur
-          ? 'non_eur'
-          : type === 'topup'
-            ? 'internal_transfer'
-            : null,
+        excluded: !isEur,
+        exclusionReason: !isEur ? 'non_eur' : null,
         notes: '',
       })
     }

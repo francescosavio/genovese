@@ -109,6 +109,14 @@ describe('coverage', () => {
 })
 
 describe('category search', () => {
+  test('not spending is offered alongside the categories', () => {
+    expect(CATEGORY_OPTIONS.at(-1)).toEqual({
+      kind: 'not-spending',
+      label: 'Not spending',
+    })
+    expect(searchCategories('not spend')[0]?.kind).toBe('not-spending')
+  })
+
   test('a category is offered with and without its sub-categories', () => {
     const labels = CATEGORY_OPTIONS.map((o) => o.label)
     expect(labels).toContain('Food')
@@ -126,7 +134,12 @@ describe('category search', () => {
 
   test('picking a bare category means no sub-category, not an empty one', () => {
     const [food] = searchCategories('food')
-    expect(food).toEqual({ category: 'Food', subcategory: null, label: 'Food' })
+    expect(food).toEqual({
+      kind: 'category',
+      category: 'Food',
+      subcategory: null,
+      label: 'Food',
+    })
   })
 
   test('an empty query offers everything', () => {

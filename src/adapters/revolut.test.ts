@@ -74,11 +74,10 @@ describe('type mapping', () => {
 })
 
 describe('exclusions', () => {
-  test('a topup is money from my own bank, not income', () => {
-    const tx = parseOne({ type: 'Topup', amount: '500.00' })
-    expect(tx).toMatchObject({
-      excluded: true,
-      exclusionReason: 'internal_transfer',
+  test('a topup is not assumed to be money from my own bank', () => {
+    expect(parseOne({ type: 'Topup', amount: '500.00' })).toMatchObject({
+      excluded: false,
+      exclusionReason: null,
     })
   })
 

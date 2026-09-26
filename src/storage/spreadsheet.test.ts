@@ -136,12 +136,14 @@ describe('round trip', () => {
         merchant: 'albert heijn',
         category: 'Food',
         subcategory: 'Groceries',
+        excluded: false,
         updatedAt: '2026-09-19T10:00:00.000Z',
       },
       {
         merchant: 'netflix',
         category: 'Subscription',
         subcategory: null,
+        excluded: false,
         updatedAt: '2026-09-19T10:00:00.000Z',
       },
     ]
@@ -246,5 +248,37 @@ describe('reading a file manually edited', () => {
     expect(() => fromWorkbook(XLSX.utils.book_new())).toThrow(
       /not a Genovese file/,
     )
+  })
+})
+
+describe('the not-spending flag travels in the file', () => {
+  test('survives export and import', () => {
+    const mapping: MerchantOverride = {
+      merchant: 'hr f savio',
+      category: null,
+      subcategory: null,
+      excluded: true,
+      updatedAt: '2026-09-19T10:00:00.000Z',
+    }
+    const { merchantOverrides, warnings } = roundTrip([], [mapping])
+    expect(warnings).toEqual([])
+    expect(merchantOverrides).toEqual([mapping])
+  })
+
+  test('a row naming neither a category nor the flag is reported', () => {
+    const book = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(
+      book,
+      XLSX.utils.json_to_sheet([]),
+      SHEETS.transactions,
+    )
+    XLSX.utils.book_append_sheet(
+      book,
+      XLSX.utils.json_to_sheet([{ merchant: 'mystery', updatedAt: '' }]),
+      SHEETS.merchants,
+    )
+    const { merchantOverrides, warnings } = fromWorkbook(book)
+    expect(merchantOverrides).toEqual([])
+    expect(warnings.join(' ')).toMatch(/not marked as not spending/)
   })
 })

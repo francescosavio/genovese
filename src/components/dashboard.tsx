@@ -163,7 +163,7 @@ export function Dashboard({
 
         <dl className="divide-border min-w-56 divide-y text-sm md:ml-auto">
           <Stat label="Spent" value={period.spent} />
-          <Stat label="Received" value={period.received} />
+          <Stat label="Set aside" value={period.setAside} />
           {showAverages && (
             <>
               <Stat
@@ -172,8 +172,8 @@ export function Dashboard({
                 note={`avg of ${average.months}`}
               />
               <Stat
-                label="Received / month"
-                value={average.receivedPerMonth}
+                label="Set aside / month"
+                value={average.setAsidePerMonth}
                 note={`avg of ${average.months}`}
               />
             </>
