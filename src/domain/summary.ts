@@ -1,5 +1,5 @@
 import { flowOf, type Category } from './categories'
-import { inEur, type Transaction } from './transaction'
+import type { Transaction } from './transaction'
 
 export type MonthKey = string // YYYY-MM
 
@@ -30,16 +30,12 @@ export function monthsPresent(
   within: Period = null,
 ): MonthKey[] {
   return [
-    ...new Set(
-      transactions
-        .filter((tx) => inEur(tx) && inPeriod(tx, within))
-        .map(monthOf),
-    ),
+    ...new Set(transactions.filter((tx) => inPeriod(tx, within)).map(monthOf)),
   ].sort((a, b) => b.localeCompare(a))
 }
 
 export function yearsPresent(transactions: Transaction[]): string[] {
-  return [...new Set(transactions.filter(inEur).map(yearOf))].sort((a, b) =>
+  return [...new Set(transactions.map(yearOf))].sort((a, b) =>
     b.localeCompare(a),
   )
 }
@@ -49,7 +45,7 @@ const inPeriod = (tx: Transaction, period: Period) =>
 
 // Spending only: income and transfers never match.
 export function matches(tx: Transaction, filter: Filter): boolean {
-  if (!inEur(tx) || flowOf(tx.category) !== 'expense') return false
+  if (flowOf(tx.category) !== 'expense') return false
   if (!inPeriod(tx, filter.period)) return false
   if (filter.category !== ALL && tx.category !== filter.category) return false
   return true
@@ -66,9 +62,9 @@ export function totals(transactions: Transaction[], filter: Filter): Totals {
   let spent = 0
   let income = 0
   for (const tx of transactions) {
-    if (!inEur(tx) || !inPeriod(tx, filter.period)) continue
-    if (matches(tx, filter)) spent -= tx.amountEur
-    else if (flowOf(tx.category) === 'income') income += tx.amountEur
+    if (!inPeriod(tx, filter.period)) continue
+    if (matches(tx, filter)) spent -= tx.amount
+    else if (flowOf(tx.category) === 'income') income += tx.amount
   }
   return { spent: round2(spent), income: round2(income) }
 }
@@ -90,7 +86,7 @@ export function spendByBucket(
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
     const bucket: Bucket = tx.category ?? UNCATEGORISED
-    sums.set(bucket, (sums.get(bucket) ?? 0) - (tx.amountEur ?? 0))
+    sums.set(bucket, (sums.get(bucket) ?? 0) - tx.amount)
   }
 
   const spent = [...sums.values()].reduce((a, b) => a + b, 0)
@@ -112,7 +108,7 @@ export function spendByMonth(
   const sums = new Map<MonthKey, number>()
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
-    const amount = tx.amountEur ?? 0
+    const { amount } = tx
     if (amount >= 0) continue
     const month = monthOf(tx)
     sums.set(month, (sums.get(month) ?? 0) - amount)
@@ -125,11 +121,11 @@ export function spendByMonth(
 export type Outstanding = { count: number; total: number }
 
 export function uncategorised(transactions: Transaction[]): Outstanding {
-  const rows = transactions.filter((tx) => inEur(tx) && tx.category === null)
+  const rows = transactions.filter((tx) => tx.category === null)
   return {
     count: rows.length,
     total: round2(
-      rows.reduce((sum, tx) => sum + Math.min(tx.amountEur ?? 0, 0), 0) * -1,
+      rows.reduce((sum, tx) => sum + Math.min(tx.amount, 0), 0) * -1,
     ),
   }
 }
@@ -176,7 +172,7 @@ export function spendOverTime(
 
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
-    const amount = tx.amountEur ?? 0
+    const { amount } = tx
     if (amount >= 0) continue
     const key = daily ? tx.date : monthOf(tx)
     sums.set(key, (sums.get(key) ?? 0) - amount)

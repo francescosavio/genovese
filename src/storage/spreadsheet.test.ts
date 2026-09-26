@@ -14,9 +14,7 @@ function tx(over: Partial<Transaction> = {}): Transaction {
   return {
     id: 'a',
     date: '2026-09-01',
-    currency: 'EUR',
-    amountRaw: -12.34,
-    amountEur: -12.34,
+    amount: -12.34,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: null,
@@ -56,9 +54,9 @@ describe('workbook shape', () => {
 
 describe('transaction rows', () => {
   test('amounts stay numbers, not text', () => {
-    const [row] = rows(toWorkbook([tx({ amountRaw: -12.34 })]), 'transactions')
-    expect(row?.amountRaw).toBe(-12.34)
-    expect(typeof row?.amountRaw).toBe('number')
+    const [row] = rows(toWorkbook([tx({ amount: -12.34 })]), 'transactions')
+    expect(row?.amount).toBe(-12.34)
+    expect(typeof row?.amount).toBe('number')
   })
 
   test('dates stay ISO strings, not Excel serial numbers', () => {
@@ -107,12 +105,11 @@ function roundTrip(
 describe('round trip', () => {
   test('import(export(x)) equals x', () => {
     const input = [
-      tx({ id: 'a', date: '2024-01-15', amountRaw: -10, amountEur: -10 }),
+      tx({ id: 'a', date: '2024-01-15', amount: -10 }),
       tx({
         id: 'b',
         date: '2026-09-02',
-        amountRaw: -46.36,
-        amountEur: -46.36,
+        amount: -46.36,
         category: 'Food',
         subcategory: 'Groceries',
         notes: 'weekly shop',
@@ -120,9 +117,7 @@ describe('round trip', () => {
       tx({
         id: 'c',
         date: '2026-09-04',
-        currency: 'USD',
-        amountRaw: -20,
-        amountEur: null,
+        amount: -20,
         merchant: null,
         type: 'transfer',
       }),
@@ -165,10 +160,10 @@ describe('round trip', () => {
 
   test('amounts do not drift through the file', () => {
     const { transactions } = roundTrip([
-      tx({ id: 'a', amountRaw: -0.45, amountEur: -0.45 }),
-      tx({ id: 'b', amountRaw: -1234.56, amountEur: -1234.56 }),
+      tx({ id: 'a', amount: -0.45 }),
+      tx({ id: 'b', amount: -1234.56 }),
     ])
-    expect(transactions.map((t) => t.amountRaw)).toEqual([-0.45, -1234.56])
+    expect(transactions.map((t) => t.amount)).toEqual([-0.45, -1234.56])
   })
 })
 
@@ -187,7 +182,7 @@ describe('reading a file manually edited', () => {
     const { transactions, warnings } = sheetWith({
       id: 'a',
       date: '2026-09-01',
-      amountRaw: -1,
+      amount: -1,
       category: 'Grocery',
     })
     expect(transactions[0]?.category).toBeNull()
@@ -198,7 +193,7 @@ describe('reading a file manually edited', () => {
     const { transactions, warnings } = sheetWith({
       id: 'a',
       date: '2026-09-01',
-      amountRaw: -1,
+      amount: -1,
       category: 'Car',
       subcategory: 'Books',
     })
@@ -212,7 +207,7 @@ describe('reading a file manually edited', () => {
   test('a row with no id is skipped and reported', () => {
     const { transactions, warnings } = sheetWith({
       date: '2026-09-01',
-      amountRaw: -1,
+      amount: -1,
     })
     expect(transactions).toHaveLength(0)
     expect(warnings[0]).toMatch(/row 2: missing id/)
@@ -222,7 +217,7 @@ describe('reading a file manually edited', () => {
     const { transactions, warnings } = sheetWith({
       id: 'a',
       date: new Date(Date.UTC(2026, 8, 1)),
-      amountRaw: -1,
+      amount: -1,
     })
     expect(transactions[0]?.date).toBe('2026-09-01')
     expect(warnings).toEqual([])
@@ -258,17 +253,5 @@ describe('merchant mappings without a category', () => {
     })
     expect(merchantOverrides).toEqual([])
     expect(warnings.join(' ')).toMatch(/no category for "mystery"/)
-  })
-
-  // Salary or transfer is not guessed; the merchant goes back to the list.
-  test('an old not-spending mark comes back uncategorised, with a warning', () => {
-    const { merchantOverrides, warnings } = merchantsSheet({
-      merchant: 'hr f savio',
-      category: '',
-      excluded: 'TRUE',
-      updatedAt: '',
-    })
-    expect(merchantOverrides).toEqual([])
-    expect(warnings.join(' ')).toMatch(/"hr f savio" was marked not spending/)
   })
 })

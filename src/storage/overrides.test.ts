@@ -17,9 +17,7 @@ function tx(id: string, over: Partial<Transaction> = {}): Transaction {
   return {
     id,
     date: '2026-09-01',
-    currency: 'EUR',
-    amountRaw: -12.34,
-    amountEur: -12.34,
+    amount: -12.34,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: null,

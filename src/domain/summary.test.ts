@@ -18,9 +18,7 @@ function tx(over: Partial<Transaction> = {}): Transaction {
   return {
     id: Math.random().toString(36),
     date: '2026-09-01',
-    currency: 'EUR',
-    amountRaw: -10,
-    amountEur: -10,
+    amount: -10,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: 'Food',
@@ -45,12 +43,6 @@ describe('months present', () => {
       ]),
     ).toEqual(['2026-09', '2024-01'])
   })
-
-  test('non-EUR rows do not create a month of their own', () => {
-    expect(
-      monthsPresent([tx({ date: '2025-05-01', amountEur: null })]),
-    ).toEqual([])
-  })
 })
 
 describe('totals', () => {
@@ -58,7 +50,7 @@ describe('totals', () => {
   // cost. Salary and transfers must not, which is what the flow is for.
   test('a refund reduces what the period cost', () => {
     const { spent } = totals(
-      [tx({ amountEur: -100 }), tx({ amountEur: 30 })],
+      [tx({ amount: -100 }), tx({ amount: 30 })],
       everything,
     )
     expect(spent).toBe(70)
@@ -68,8 +60,8 @@ describe('totals', () => {
     expect(
       totals(
         [
-          tx({ amountEur: -40 }),
-          tx({ amountEur: 4140.36, category: 'Salary', subcategory: null }),
+          tx({ amount: -40 }),
+          tx({ amount: 4140.36, category: 'Salary', subcategory: null }),
         ],
         everything,
       ),
@@ -80,8 +72,8 @@ describe('totals', () => {
     expect(
       totals(
         [
-          tx({ amountEur: -500, category: 'Transfers', subcategory: null }),
-          tx({ amountEur: 200, category: 'Transfers', subcategory: null }),
+          tx({ amount: -500, category: 'Transfers', subcategory: null }),
+          tx({ amount: 200, category: 'Transfers', subcategory: null }),
         ],
         everything,
       ),
@@ -91,22 +83,16 @@ describe('totals', () => {
   test('uncategorised money counts as spending until decided', () => {
     expect(
       totals(
-        [tx({ amountEur: -15, category: null, subcategory: null })],
+        [tx({ amount: -15, category: null, subcategory: null })],
         everything,
       ).spent,
     ).toBe(15)
   })
 
-  test('a non-EUR row is neither spending nor income', () => {
-    expect(
-      totals([tx({ currency: 'USD', amountEur: null })], everything),
-    ).toEqual({ spent: 0, income: 0 })
-  })
-
   test('a month period selects by the transaction date', () => {
     const data = [
-      tx({ date: '2026-08-31', amountEur: -10 }),
-      tx({ date: '2026-09-01', amountEur: -25 }),
+      tx({ date: '2026-08-31', amount: -10 }),
+      tx({ date: '2026-09-01', amount: -25 }),
     ]
     expect(totals(data, { period: '2026-09', category: ALL }).spent).toBe(25)
   })
@@ -114,9 +100,9 @@ describe('totals', () => {
   // The period is a date prefix, so a year needs no separate code path.
   test('a year period gathers every month in it', () => {
     const data = [
-      tx({ date: '2025-12-31', amountEur: -10 }),
-      tx({ date: '2026-03-01', amountEur: -25 }),
-      tx({ date: '2026-11-04', amountEur: -5 }),
+      tx({ date: '2025-12-31', amount: -10 }),
+      tx({ date: '2026-03-01', amount: -25 }),
+      tx({ date: '2026-11-04', amount: -5 }),
     ]
     expect(totals(data, { period: '2026', category: ALL }).spent).toBe(30)
   })
@@ -126,9 +112,9 @@ describe('spend by bucket', () => {
   test('salary and transfers are not slices of spending', () => {
     const ranked = spendByBucket(
       [
-        tx({ category: 'Food', amountEur: -30 }),
-        tx({ category: 'Salary', subcategory: null, amountEur: 4000 }),
-        tx({ category: 'Transfers', subcategory: null, amountEur: -500 }),
+        tx({ category: 'Food', amount: -30 }),
+        tx({ category: 'Salary', subcategory: null, amount: 4000 }),
+        tx({ category: 'Transfers', subcategory: null, amount: -500 }),
       ],
       everything,
     )
@@ -138,9 +124,9 @@ describe('spend by bucket', () => {
   test('ranks categories by how much left, biggest first', () => {
     const ranked = spendByBucket(
       [
-        tx({ category: 'Food', amountEur: -30 }),
-        tx({ category: 'Home', amountEur: -900 }),
-        tx({ category: 'Sport', amountEur: -50 }),
+        tx({ category: 'Food', amount: -30 }),
+        tx({ category: 'Home', amount: -900 }),
+        tx({ category: 'Sport', amount: -50 }),
       ],
       everything,
     )
@@ -150,8 +136,8 @@ describe('spend by bucket', () => {
   test('shares add up to the whole', () => {
     const ranked = spendByBucket(
       [
-        tx({ category: 'Food', amountEur: -25 }),
-        tx({ category: 'Home', amountEur: -75 }),
+        tx({ category: 'Food', amount: -25 }),
+        tx({ category: 'Home', amount: -75 }),
       ],
       everything,
     )
@@ -162,8 +148,8 @@ describe('spend by bucket', () => {
   test('uncategorised money is a bucket, not an omission', () => {
     const ranked = spendByBucket(
       [
-        tx({ category: 'Food', amountEur: -10 }),
-        tx({ category: null, subcategory: null, amountEur: -90 }),
+        tx({ category: 'Food', amount: -10 }),
+        tx({ category: null, subcategory: null, amount: -90 }),
       ],
       everything,
     )
@@ -173,8 +159,8 @@ describe('spend by bucket', () => {
   test('a refund lands in its own category rather than posing as income', () => {
     const ranked = spendByBucket(
       [
-        tx({ category: 'Food', amountEur: -50 }),
-        tx({ category: 'Food', amountEur: 10 }),
+        tx({ category: 'Food', amount: -50 }),
+        tx({ category: 'Food', amount: 10 }),
       ],
       everything,
     )
@@ -183,7 +169,7 @@ describe('spend by bucket', () => {
 
   test('a category can end a period negative, and that is real', () => {
     const [only] = spendByBucket(
-      [tx({ category: 'Shopping', amountEur: 120 })],
+      [tx({ category: 'Shopping', amount: 120 })],
       everything,
     )
     expect(only?.total).toBe(-120)
@@ -198,9 +184,9 @@ describe('spend by month', () => {
   test('is ordered oldest first, because time runs that way on an axis', () => {
     const series = spendByMonth(
       [
-        tx({ date: '2026-09-02', amountEur: -30 }),
-        tx({ date: '2026-07-11', amountEur: -10 }),
-        tx({ date: '2026-09-20', amountEur: -5 }),
+        tx({ date: '2026-09-02', amount: -30 }),
+        tx({ date: '2026-07-11', amount: -10 }),
+        tx({ date: '2026-09-20', amount: -5 }),
       ],
       everything,
     )
@@ -213,8 +199,8 @@ describe('spend by month', () => {
   test('honours a category filter', () => {
     const series = spendByMonth(
       [
-        tx({ date: '2026-09-02', category: 'Food', amountEur: -30 }),
-        tx({ date: '2026-09-03', category: 'Home', amountEur: -900 }),
+        tx({ date: '2026-09-02', category: 'Food', amount: -30 }),
+        tx({ date: '2026-09-03', category: 'Home', amount: -900 }),
       ],
       { period: null, category: 'Food' },
     )
@@ -227,31 +213,25 @@ describe('outstanding work', () => {
     expect(
       uncategorised([
         tx({ category: 'Food' }),
-        tx({ category: null, amountEur: -12.5 }),
-        tx({ category: null, amountEur: -7.5 }),
+        tx({ category: null, amount: -12.5 }),
+        tx({ category: null, amount: -7.5 }),
       ]),
     ).toEqual({ count: 2, total: 20 })
   })
 
   test('an uncategorised refund does not reduce the outstanding amount', () => {
-    expect(uncategorised([tx({ category: null, amountEur: 40 })])).toEqual({
+    expect(uncategorised([tx({ category: null, amount: 40 })])).toEqual({
       count: 1,
       total: 0,
     })
-  })
-
-  test('non-EUR rows are not outstanding work', () => {
-    expect(uncategorised([tx({ category: null, amountEur: null })]).count).toBe(
-      0,
-    )
   })
 })
 
 describe('averages', () => {
   test('divide by the months that have data inside the period', () => {
     const data = [
-      tx({ date: '2026-01-05', amountEur: -100 }),
-      tx({ date: '2026-03-05', amountEur: -200 }),
+      tx({ date: '2026-01-05', amount: -100 }),
+      tx({ date: '2026-03-05', amount: -200 }),
     ]
     expect(averages(data, { period: '2026', category: ALL })).toEqual({
       months: 2,
@@ -262,19 +242,19 @@ describe('averages', () => {
 
   test('income is averaged over the same months', () => {
     const data = [
-      tx({ date: '2026-01-05', amountEur: -100 }),
+      tx({ date: '2026-01-05', amount: -100 }),
       tx({
         date: '2026-01-25',
         category: 'Salary',
         subcategory: null,
-        amountEur: 3000,
+        amount: 3000,
       }),
-      tx({ date: '2026-02-05', amountEur: -100 }),
+      tx({ date: '2026-02-05', amount: -100 }),
       tx({
         date: '2026-02-25',
         category: 'Salary',
         subcategory: null,
-        amountEur: 3200,
+        amount: 3200,
       }),
     ]
     expect(averages(data, { period: '2026', category: ALL })).toMatchObject({
@@ -284,7 +264,7 @@ describe('averages', () => {
   })
 
   test('a single month averages to itself, which is why the UI hides it', () => {
-    const data = [tx({ date: '2026-01-05', amountEur: -100 })]
+    const data = [tx({ date: '2026-01-05', amount: -100 })]
     expect(averages(data, { period: '2026-01', category: ALL })).toMatchObject({
       months: 1,
       spentPerMonth: 100,
@@ -317,7 +297,7 @@ describe('spend over time', () => {
   // Daily inside a year too, so the cumulative line shows the shape of each
   // month rather than eleven straight segments.
   test('a year is bucketed into every one of its days', () => {
-    const points = spendOverTime([tx({ date: '2026-03-04', amountEur: -30 })], {
+    const points = spendOverTime([tx({ date: '2026-03-04', amount: -30 })], {
       period: '2026',
       category: ALL,
     })
@@ -343,8 +323,8 @@ describe('spend over time', () => {
   test('a quiet day is still a bucket, so the axis stays evenly spaced', () => {
     const points = spendOverTime(
       [
-        tx({ date: '2026-04-01', amountEur: -10 }),
-        tx({ date: '2026-04-30', amountEur: -10 }),
+        tx({ date: '2026-04-01', amount: -10 }),
+        tx({ date: '2026-04-30', amount: -10 }),
       ],
       { period: '2026-04', category: ALL },
     )
@@ -355,8 +335,8 @@ describe('spend over time', () => {
   test('several transactions on one day add up into that bucket', () => {
     const points = spendOverTime(
       [
-        tx({ date: '2026-04-02', amountEur: -3.5 }),
-        tx({ date: '2026-04-02', amountEur: -6.5 }),
+        tx({ date: '2026-04-02', amount: -3.5 }),
+        tx({ date: '2026-04-02', amount: -6.5 }),
       ],
       { period: '2026-04', category: ALL },
     )
@@ -364,7 +344,7 @@ describe('spend over time', () => {
   })
 
   test('income never appears as spending', () => {
-    const points = spendOverTime([tx({ date: '2026-04-02', amountEur: 900 })], {
+    const points = spendOverTime([tx({ date: '2026-04-02', amount: 900 })], {
       period: '2026-04',
       category: ALL,
     })
@@ -373,8 +353,8 @@ describe('spend over time', () => {
 
   test('the category filter scopes the series', () => {
     const data = [
-      tx({ date: '2026-04-02', category: 'Food', amountEur: -10 }),
-      tx({ date: '2026-04-03', category: 'Home', amountEur: -900 }),
+      tx({ date: '2026-04-02', category: 'Food', amount: -10 }),
+      tx({ date: '2026-04-03', category: 'Home', amount: -900 }),
     ]
     const points = spendOverTime(data, { period: '2026-04', category: 'Food' })
     expect(points.filter((p) => p.spent > 0)).toEqual([
@@ -383,7 +363,7 @@ describe('spend over time', () => {
   })
 
   test('with no period at all it falls back to the months that exist', () => {
-    const points = spendOverTime([tx({ date: '2025-06-02', amountEur: -10 })], {
+    const points = spendOverTime([tx({ date: '2025-06-02', amount: -10 })], {
       period: null,
       category: ALL,
     })

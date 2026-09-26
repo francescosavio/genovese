@@ -58,15 +58,13 @@ describe('detect', () => {
 // column. Miss that and the app sees no spending at all.
 describe('direction', () => {
   test('a debit is money out', () => {
-    expect(parseOne({ direction: 'Debit', amount: '59,55' }).amountRaw).toBe(
+    expect(parseOne({ direction: 'Debit', amount: '59,55' }).amount).toBe(
       -59.55,
     )
   })
 
   test('a credit is money in', () => {
-    expect(parseOne({ direction: 'Credit', amount: '5,93' }).amountRaw).toBe(
-      5.93,
-    )
+    expect(parseOne({ direction: 'Credit', amount: '5,93' }).amount).toBe(5.93)
   })
 
   test('a row with no direction is reported, not guessed at', () => {
@@ -85,7 +83,7 @@ describe('Dutch number format', () => {
     ['4.140,36', -4140.36],
     ['3,55', -3.55],
   ])('%j parses to %s', (amount, expected) => {
-    expect(parseOne({ amount }).amountRaw).toBe(expected)
+    expect(parseOne({ amount }).amount).toBe(expected)
   })
 })
 

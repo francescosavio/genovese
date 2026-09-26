@@ -1,15 +1,9 @@
-import { inEur, type Transaction } from '@/domain/transaction'
+import type { Transaction } from '@/domain/transaction'
 
 const EUR = new Intl.NumberFormat('nl-NL', {
   style: 'currency',
   currency: 'EUR',
 })
-
-function amount(tx: Transaction): string {
-  return tx.currency === 'EUR'
-    ? EUR.format(tx.amountRaw)
-    : `${tx.amountRaw.toFixed(2)} ${tx.currency}`
-}
 
 export function TransactionTable({
   transactions,
@@ -36,11 +30,6 @@ export function TransactionTable({
             <td className="py-2 pr-4">{tx.merchant ?? '—'}</td>
             <td className="text-muted-foreground py-2 pr-4">
               {tx.rawDescription}
-              {!inEur(tx) && (
-                <span className="text-muted-foreground/70 ml-2 text-xs">
-                  excluded · not in EUR
-                </span>
-              )}
             </td>
             <td className="py-2 pr-4">
               {tx.category ? (
@@ -54,17 +43,11 @@ export function TransactionTable({
                   )}
                 </span>
               ) : (
-                <span className="text-muted-foreground/60">
-                  {inEur(tx) ? 'uncategorised' : '—'}
-                </span>
+                <span className="text-muted-foreground/60">uncategorised</span>
               )}
             </td>
-            <td
-              className={`py-2 pl-4 text-right tabular-nums ${
-                inEur(tx) ? '' : 'text-muted-foreground/60 line-through'
-              }`}
-            >
-              {amount(tx)}
+            <td className="py-2 pl-4 text-right tabular-nums">
+              {EUR.format(tx.amount)}
             </td>
           </tr>
         ))}

@@ -1,5 +1,5 @@
 import type { Category, Subcategory } from './categories'
-import { inEur, type Transaction } from './transaction'
+import type { Transaction } from './transaction'
 
 export type MerchantGroup = {
   merchant: string
@@ -10,11 +10,9 @@ export type MerchantGroup = {
   subcategory: Subcategory | null
 }
 
-type Groupable = Transaction & { merchant: string; amountEur: number }
-
-// Non-EUR rows have no value to show and are not work.
-const groupable = (tx: Transaction): tx is Groupable =>
-  tx.merchant !== null && inEur(tx)
+// A type predicate: past this check the compiler knows merchant is a string.
+const groupable = (tx: Transaction): tx is Transaction & { merchant: string } =>
+  tx.merchant !== null
 
 const decided = (g: MerchantGroup) => g.category !== null
 
@@ -34,7 +32,7 @@ export function groupByMerchant(transactions: Transaction[]): MerchantGroup[] {
     if (existing) {
       // append case
       existing.count += 1
-      existing.totalEur += tx.amountEur
+      existing.totalEur += tx.amount
       // A merchant is decided if any of its transactions is.
       existing.category ??= tx.category
       existing.subcategory ??= tx.subcategory
@@ -44,7 +42,7 @@ export function groupByMerchant(transactions: Transaction[]): MerchantGroup[] {
         merchant: tx.merchant,
         sample: tx.rawDescription,
         count: 1,
-        totalEur: tx.amountEur,
+        totalEur: tx.amount,
         category: tx.category,
         subcategory: tx.subcategory,
       })
@@ -64,14 +62,13 @@ export type Coverage = {
 
 // Measured in transactions
 export function coverage(transactions: Transaction[]): Coverage {
-  const countables = transactions.filter(inEur)
-  const categorised = countables.filter((tx) => tx.category !== null).length
+  const categorised = transactions.filter((tx) => tx.category !== null).length
   return {
     categorised,
-    total: countables.length,
+    total: transactions.length,
     percent:
-      countables.length === 0
+      transactions.length === 0
         ? 0
-        : Math.round((categorised / countables.length) * 100),
+        : Math.round((categorised / transactions.length) * 100),
   }
 }

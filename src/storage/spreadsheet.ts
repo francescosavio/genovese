@@ -18,9 +18,7 @@ export const SHEETS = {
 const TRANSACTION_COLUMNS = [
   'id',
   'date',
-  'currency',
-  'amountRaw',
-  'amountEur',
+  'amount',
   'rawDescription',
   'merchant',
   'category',
@@ -124,7 +122,6 @@ function asNumber(v: unknown): number | null {
   return Number.isNaN(n) ? null : n
 }
 
-
 function readCategory(
   row: Record<string, unknown>,
   warn: (message: string) => void,
@@ -175,9 +172,9 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
 
     const id = asText(row.id)
     const date = asText(row.date)
-    const amountRaw = asNumber(row.amountRaw)
+    const amount = asNumber(row.amount)
 
-    if (id === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || amountRaw === null) {
+    if (id === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || amount === null) {
       warn('missing id, date or amount, skipped')
       return
     }
@@ -185,9 +182,7 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
     transactions.push({
       id,
       date,
-      currency: asText(row.currency) || 'EUR',
-      amountRaw,
-      amountEur: asNumber(row.amountEur),
+      amount,
       rawDescription: asText(row.rawDescription),
       merchant: asOptional(row.merchant),
       ...readCategory(row, warn),

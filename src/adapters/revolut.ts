@@ -74,18 +74,21 @@ export const revolutAdapter: BankAdapter = {
         continue
       }
 
-      const amountRaw = round2(amount)
+      // Rare enough to drop, and a foreign amount has no EUR value to count.
+      if (currency !== 'EUR') {
+        skipped.push({ reason: 'not_eur', detail: currency, rawDescription })
+        continue
+      }
+
+      const rounded = round2(amount)
       const type = mapType(row.Type ?? '')
-      const isEur = currency === 'EUR'
 
       transactions.push({
         id: contentHash(
-          `revolut|${startedAt}|${currency}|${amountRaw}|${rawDescription}`,
+          `revolut|${startedAt}|${currency}|${rounded}|${rawDescription}`,
         ),
         date,
-        currency,
-        amountRaw,
-        amountEur: isEur ? amountRaw : null,
+        amount: rounded,
         rawDescription,
         merchant: normaliseMerchant(
           ROUTED.has(type)

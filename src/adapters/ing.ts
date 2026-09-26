@@ -78,17 +78,15 @@ export const ingAdapter: BankAdapter = {
 
       // ING always writes a positive number and puts the direction in its own
       // column, so the sign has to be reassembled here.
-      const amountRaw = round2(direction === 'credit' ? magnitude : -magnitude)
+      const amount = round2(direction === 'credit' ? magnitude : -magnitude)
 
       transactions.push({
         // Notifications holds the bank's own reference, date carries not time.
         id: contentHash(
-          `ing|${date}|EUR|${amountRaw}|${rawDescription}|${(row.Notifications ?? '').trim()}`,
+          `ing|${date}|EUR|${amount}|${rawDescription}|${(row.Notifications ?? '').trim()}`,
         ),
         date,
-        currency: 'EUR', // the export is a single-currency account
-        amountRaw,
-        amountEur: amountRaw,
+        amount, // the export is a single-currency account
         rawDescription,
         merchant: normaliseMerchant(rawDescription),
         category: null,

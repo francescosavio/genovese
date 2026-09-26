@@ -40,8 +40,8 @@ export function TransactionsTab({
               }`}
             >
               {name}
-              {/* The count is on the button, so "25 excluded" is answerable
-                  without clicking anything. */}
+              {/* The count is on the button, so "12 uncategorised" is
+                  answerable without clicking anything. */}
               <span className="ml-1.5 tabular-nums opacity-60">
                 {counts[name]}
               </span>

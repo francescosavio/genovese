@@ -6,9 +6,7 @@ function tx(over: Partial<Transaction> = {}): Transaction {
   return {
     id: Math.random().toString(36),
     date: '2026-08-21',
-    currency: 'EUR',
-    amountRaw: -59.55,
-    amountEur: -59.55,
+    amount: -59.55,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: 'Food',
@@ -25,38 +23,20 @@ describe('views', () => {
   const data = [
     tx({ merchant: 'albert heijn' }),
     tx({ merchant: 'bar cadaq', category: null, subcategory: null }),
-    tx({
-      merchant: 'amazon us',
-      currency: 'USD',
-      amountEur: null,
-      category: null,
-      subcategory: null,
-    }),
   ]
 
   test('all shows everything', () => {
-    expect(filterTransactions(data, 'all')).toHaveLength(3)
+    expect(filterTransactions(data, 'all')).toHaveLength(2)
   })
 
-  test('excluded shows only the rows not in EUR', () => {
-    expect(filterTransactions(data, 'excluded').map((t) => t.merchant)).toEqual(
-      ['amazon us'],
-    )
-  })
-
-  // Otherwise the tab and the coverage bar would disagree about what is left.
-  test('a non-EUR row is never counted as uncategorised work', () => {
+  test('uncategorised shows only the rows still to decide', () => {
     expect(
       filterTransactions(data, 'uncategorised').map((t) => t.merchant),
     ).toEqual(['bar cadaq'])
   })
 
   test('the counts match what each view returns', () => {
-    expect(countByView(data)).toEqual({
-      all: 3,
-      uncategorised: 1,
-      excluded: 1,
-    })
+    expect(countByView(data)).toEqual({ all: 2, uncategorised: 1 })
   })
 })
 
@@ -84,10 +64,10 @@ describe('search', () => {
 
   test('search and view narrow together', () => {
     const rows = [
-      tx({ merchant: 'albert heijn', amountEur: null }),
+      tx({ merchant: 'albert heijn', category: null, subcategory: null }),
       tx({ merchant: 'albert heijn' }),
     ]
-    expect(filterTransactions(rows, 'excluded', 'albert')).toHaveLength(1)
+    expect(filterTransactions(rows, 'uncategorised', 'albert')).toHaveLength(1)
   })
 
   test('a query nothing matches returns nothing', () => {

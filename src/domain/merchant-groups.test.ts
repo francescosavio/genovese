@@ -7,9 +7,7 @@ function tx(over: Partial<Transaction> = {}): Transaction {
   return {
     id: Math.random().toString(36),
     date: '2026-09-01',
-    currency: 'EUR',
-    amountRaw: -10,
-    amountEur: -10,
+    amount: -10,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: null,
@@ -25,26 +23,14 @@ function tx(over: Partial<Transaction> = {}): Transaction {
 describe('grouping', () => {
   test('collapses a merchant into one row with its count and total', () => {
     const [group] = groupByMerchant([
-      tx({ amountEur: -10 }),
-      tx({ amountEur: -46.36 }),
+      tx({ amount: -10 }),
+      tx({ amount: -46.36 }),
     ])
     expect(group).toMatchObject({
       merchant: 'albert heijn',
       count: 2,
       totalEur: -56.36,
     })
-  })
-
-  test('non-EUR rows are neither work nor coverage', () => {
-    expect(
-      groupByMerchant([
-        tx({
-          merchant: 'amazon us',
-          currency: 'USD',
-          amountEur: null,
-        }),
-      ]),
-    ).toEqual([])
   })
 
   test('rows without a merchant cannot be grouped', () => {
@@ -63,9 +49,9 @@ describe('grouping', () => {
 describe('ordering by impact', () => {
   test('uncategorised first, then by money at stake', () => {
     const order = groupByMerchant([
-      tx({ merchant: 'big known', amountEur: -900, category: 'Food' }),
-      tx({ merchant: 'small unknown', amountEur: -5 }),
-      tx({ merchant: 'big unknown', amountEur: -300 }),
+      tx({ merchant: 'big known', amount: -900, category: 'Food' }),
+      tx({ merchant: 'small unknown', amount: -5 }),
+      tx({ merchant: 'big unknown', amount: -300 }),
     ]).map((g) => g.merchant)
 
     expect(order).toEqual(['big unknown', 'small unknown', 'big known'])
@@ -73,8 +59,8 @@ describe('ordering by impact', () => {
 
   test('income sorts by size too, not below every expense', () => {
     const order = groupByMerchant([
-      tx({ merchant: 'refund', amountEur: 500 }),
-      tx({ merchant: 'coffee', amountEur: -3 }),
+      tx({ merchant: 'refund', amount: 500 }),
+      tx({ merchant: 'coffee', amount: -3 }),
     ]).map((g) => g.merchant)
 
     expect(order).toEqual(['refund', 'coffee'])
@@ -90,15 +76,6 @@ describe('coverage', () => {
         tx({ merchant: 'bar cadaq', category: null }),
       ]),
     ).toEqual({ categorised: 2, total: 3, percent: 67 })
-  })
-
-  test('non-EUR rows do not drag the bar down', () => {
-    expect(
-      coverage([
-        tx({ category: 'Food' }),
-        tx({ merchant: 'amazon us', amountEur: null }),
-      ]),
-    ).toMatchObject({ percent: 100 })
   })
 
   test('an empty set is 0%, not NaN', () => {

@@ -9,9 +9,7 @@ function tx(id: string, over: Partial<Transaction> = {}): Transaction {
   return {
     id,
     date: '2026-09-01',
-    currency: 'EUR',
-    amountRaw: -12.34,
-    amountEur: -12.34,
+    amount: -12.34,
     rawDescription: 'Albert Heijn',
     merchant: 'albert heijn',
     category: null,
@@ -40,17 +38,9 @@ describe('first import', () => {
       added: 2,
       duplicates: 0,
       categorised: 0,
-      excluded: 0,
       skipped: 0,
     })
     expect(await db.transactions.count()).toBe(2)
-  })
-
-  test('counts excluded rows separately from added', async () => {
-    const report = await importTransactions(
-      result(tx('a'), tx('b', { currency: 'USD', amountEur: null })),
-    )
-    expect(report).toMatchObject({ added: 2, excluded: 1 })
   })
 
   test('reports rows the adapter never turned into transactions', async () => {
@@ -107,7 +97,6 @@ describe('edge cases', () => {
       added: 0,
       duplicates: 0,
       categorised: 0,
-      excluded: 0,
       skipped: 0,
     })
   })

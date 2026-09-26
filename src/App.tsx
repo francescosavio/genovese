@@ -16,7 +16,6 @@ const supportedBanks = () => ADAPTERS.map((a) => a.label).join(', ')
 function summarise(report: ImportReport): string {
   const parts = [`${report.added} imported`]
   if (report.duplicates > 0) parts.push(`${report.duplicates} already here`)
-  if (report.excluded > 0) parts.push(`${report.excluded} excluded from totals`)
   if (report.skipped > 0) parts.push(`${report.skipped} skipped`)
   return parts.join(' · ')
 }
