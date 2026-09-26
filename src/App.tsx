@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ADAPTERS, adapterFor } from '@/adapters'
 import { CategoriseScreen } from '@/components/categorise-screen'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { TransactionsTab } from '@/components/transactions-tab'
 import { db } from '@/storage/db'
 import { importTransactions, type ImportReport } from '@/storage/import'
-import { saveMerchantOverrides } from '@/storage/overrides'
+import { resolveCategories, saveMerchantOverrides } from '@/storage/overrides'
 import { downloadWorkbook, readSpreadsheet } from '@/storage/spreadsheet'
 
 const supportedBanks = () => ADAPTERS.map((a) => a.label).join(', ')
@@ -30,10 +30,23 @@ export default function App() {
 
   // Re-runs on its own whenever the table changes, so importing updates the
   // list without a refetch. undefined means the first read is still running.
-  const transactions = useLiveQuery(() =>
+  const stored = useLiveQuery(() =>
     db.transactions.orderBy('date').reverse().toArray(),
   )
   const merchantOverrides = useLiveQuery(() => db.merchants.toArray())
+
+  // Every tab sees transactions with their merchant's category joined on.
+  // Recomputed only when either table changes.
+  const transactions = useMemo(
+    () =>
+      stored &&
+      merchantOverrides &&
+      resolveCategories(
+        stored,
+        new Map(merchantOverrides.map((o) => [o.merchant, o])),
+      ),
+    [stored, merchantOverrides],
+  )
 
   async function importFile(file: File) {
     setReport(null)

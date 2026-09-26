@@ -185,7 +185,9 @@ export function fromWorkbook(book: XLSX.WorkBook): LoadResult {
       amount,
       rawDescription: asText(row.rawDescription),
       merchant: asOptional(row.merchant),
-      ...readCategory(row, warn),
+      // Written for reading in Sheets; the merchants sheet is what is trusted.
+      category: null,
+      subcategory: null,
       account: asText(row.account),
       sourceBank: asText(row.sourceBank) === 'ing' ? 'ing' : 'revolut',
       type: asText(row.type) as Transaction['type'],

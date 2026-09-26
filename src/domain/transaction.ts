@@ -12,7 +12,7 @@ export type Transaction = {
   amount: number // EUR, 2 decimals; negative means money left
   rawDescription: string
   merchant: string | null // normalized; null on rows that have no merchant
-  category: Category | null
+  category: Category | null // from the merchant, resolved when read
   subcategory: Subcategory | null
   account: string // captured, not used: which account at that bank
   sourceBank: BankId

@@ -33,9 +33,6 @@ export function groupByMerchant(transactions: Transaction[]): MerchantGroup[] {
       // append case
       existing.count += 1
       existing.totalEur += tx.amount
-      // A merchant is decided if any of its transactions is.
-      existing.category ??= tx.category
-      existing.subcategory ??= tx.subcategory
     } else {
       // group creation
       groups.set(tx.merchant, {

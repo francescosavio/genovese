@@ -59,6 +59,14 @@ describe('transaction rows', () => {
     expect(typeof row?.amount).toBe('number')
   })
 
+  test('the resolved category is written, so the file reads well in Sheets', () => {
+    const [row] = rows(
+      toWorkbook([tx({ category: 'Food', subcategory: 'Groceries' })]),
+      'transactions',
+    )
+    expect(row).toMatchObject({ category: 'Food', subcategory: 'Groceries' })
+  })
+
   test('dates stay ISO strings, not Excel serial numbers', () => {
     const [row] = rows(toWorkbook([tx({ date: '2026-03-04' })]), 'transactions')
     expect(row?.date).toBe('2026-03-04')
@@ -103,7 +111,8 @@ function roundTrip(
 }
 
 describe('round trip', () => {
-  test('import(export(x)) equals x', () => {
+  // Categories live in the merchants sheet, so they come back through it.
+  test('import(export(x)) equals x, apart from the category', () => {
     const input = [
       tx({ id: 'a', date: '2024-01-15', amount: -10 }),
       tx({
@@ -143,7 +152,9 @@ describe('round trip', () => {
 
     expect(warnings).toEqual([])
     expect(transactions).toEqual(
-      [...input].sort((a, b) => a.date.localeCompare(b.date)),
+      [...input]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((t) => ({ ...t, category: null, subcategory: null })),
     )
     expect(merchantOverrides).toEqual(
       [...mappings].sort((a, b) => a.merchant.localeCompare(b.merchant)),
@@ -178,7 +189,9 @@ describe('reading a file manually edited', () => {
     return fromWorkbook(book)
   }
 
-  test('a misspelled category is reported, not silently accepted', () => {
+  // Hand-editing the category column changes nothing on import, so the
+  // column is not read at all rather than read and ignored.
+  test('the category column is for reading in Sheets, not trusted', () => {
     const { transactions, warnings } = sheetWith({
       id: 'a',
       date: '2026-09-01',
@@ -186,22 +199,7 @@ describe('reading a file manually edited', () => {
       category: 'Grocery',
     })
     expect(transactions[0]?.category).toBeNull()
-    expect(warnings[0]).toMatch(/unknown category "Grocery"/)
-  })
-
-  test('a sub-category under the wrong parent is dropped with a warning', () => {
-    const { transactions, warnings } = sheetWith({
-      id: 'a',
-      date: '2026-09-01',
-      amount: -1,
-      category: 'Car',
-      subcategory: 'Books',
-    })
-    expect(transactions[0]).toMatchObject({
-      category: 'Car',
-      subcategory: null,
-    })
-    expect(warnings[0]).toMatch(/not a sub-category of Car/)
+    expect(warnings).toEqual([])
   })
 
   test('a row with no id is skipped and reported', () => {
@@ -230,7 +228,7 @@ describe('reading a file manually edited', () => {
   })
 })
 
-describe('merchant mappings without a category', () => {
+describe('reading merchant mappings', () => {
   function merchantsSheet(row: Record<string, unknown>) {
     const book = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(
@@ -253,5 +251,19 @@ describe('merchant mappings without a category', () => {
     })
     expect(merchantOverrides).toEqual([])
     expect(warnings.join(' ')).toMatch(/no category for "mystery"/)
+  })
+
+  test('a sub-category under the wrong parent is dropped with a warning', () => {
+    const { merchantOverrides, warnings } = merchantsSheet({
+      merchant: 'albert heijn',
+      category: 'Car',
+      subcategory: 'Books',
+      updatedAt: '',
+    })
+    expect(merchantOverrides[0]).toMatchObject({
+      category: 'Car',
+      subcategory: null,
+    })
+    expect(warnings[0]).toMatch(/not a sub-category of Car/)
   })
 })

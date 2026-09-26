@@ -2,18 +2,18 @@ import type { Category, Subcategory } from '@/domain/categories'
 import type { Transaction } from '@/domain/transaction'
 import { db, type MerchantOverride } from './db'
 
-export function applyMerchantOverrides(
+// Join Transactions, merchants and categories.
+export function resolveCategories(
   transactions: Transaction[],
-  merchantOverridesMap: Map<string, MerchantOverride>,
+  merchantOverrides: Map<string, MerchantOverride>,
 ): Transaction[] {
   return transactions.map((tx) => {
     const override =
-      tx.merchant === null ? undefined : merchantOverridesMap.get(tx.merchant)
-    if (!override) return tx
+      tx.merchant === null ? undefined : merchantOverrides.get(tx.merchant)
     return {
       ...tx,
-      category: override.category,
-      subcategory: override.subcategory,
+      category: override?.category ?? null,
+      subcategory: override?.subcategory ?? null,
     }
   })
 }
@@ -25,28 +25,22 @@ export async function loadMerchantOverrides(): Promise<
   return new Map(rows.map((row) => [row.merchant, row]))
 }
 
-// One decision, applied to every transaction of that merchant at once.
-export function setMerchantCategory(
+// One row written; every transaction of that merchant follows on the next read.
+export async function setMerchantCategory(
   merchant: string,
   category: Category,
   subcategory: Subcategory | null,
   now = new Date(),
-): Promise<number> {
-  return db.transaction('rw', db.merchants, db.transactions, async () => {
-    await db.merchants.put({
-      merchant,
-      category,
-      subcategory,
-      updatedAt: now.toISOString(),
-    })
-    return db.transactions
-      .where('merchant')
-      .equals(merchant)
-      .modify({ category, subcategory })
+): Promise<void> {
+  await db.merchants.put({
+    merchant,
+    category,
+    subcategory,
+    updatedAt: now.toISOString(),
   })
 }
 
-// Forgets the mapping. Transactions keep what they were given
+// Its transactions become uncategorised again
 export async function clearMerchantOverride(merchant: string): Promise<void> {
   await db.merchants.delete(merchant)
 }

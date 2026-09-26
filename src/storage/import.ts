@@ -1,6 +1,6 @@
 import type { ParseResult } from '@/domain/bank-adapter'
 import { db } from './db'
-import { applyMerchantOverrides, loadMerchantOverrides } from './overrides'
+import { loadMerchantOverrides, resolveCategories } from './overrides'
 
 export type ImportReport = {
   added: number
@@ -9,8 +9,8 @@ export type ImportReport = {
   skipped: number
 }
 
-// Existing rows are never overwritten: they carry categorisation that exists
-// nowhere else, and a re-imported statement carries none.
+// Existing rows are never overwritten: they carry notes that exist nowhere
+// else, and a re-imported statement carries none.
 export async function importTransactions({
   transactions,
   skipped,
@@ -24,16 +24,16 @@ export async function importTransactions({
         .anyOf(transactions.map((t) => t.id))
         .primaryKeys(),
     )
-    const fresh = applyMerchantOverrides(
-      transactions.filter((t) => !seen.has(t.id)),
-      merchantOverrides,
-    )
+    const fresh = transactions.filter((t) => !seen.has(t.id))
     await db.transactions.bulkAdd(fresh)
 
     return {
       added: fresh.length,
       duplicates: transactions.length - fresh.length,
-      categorised: fresh.filter((t) => t.category !== null).length,
+      // Already known merchants, so nothing to do for these
+      categorised: resolveCategories(fresh, merchantOverrides).filter(
+        (t) => t.category !== null,
+      ).length,
       skipped: skipped.length,
     }
   })

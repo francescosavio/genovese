@@ -37,9 +37,9 @@ describe('grouping', () => {
     expect(groupByMerchant([tx({ merchant: null })])).toEqual([])
   })
 
-  test('a merchant counts as categorised if any of its rows is', () => {
+  test('a merchant carries the category its rows were resolved to', () => {
     const [group] = groupByMerchant([
-      tx({ category: null }),
+      tx({ category: 'Food', subcategory: 'Groceries' }),
       tx({ category: 'Food', subcategory: 'Groceries' }),
     ])
     expect(group).toMatchObject({ category: 'Food', subcategory: 'Groceries' })
