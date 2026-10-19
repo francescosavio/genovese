@@ -34,10 +34,14 @@ function axisLabel(key: string, index: number, count: number): string | null {
 
 export function SpendOverTime({ points }: { points: CumulativePoint[] }) {
   const [hovered, setHovered] = useState<number | null>(null)
-  // The running total only grows, so the last point is always the peak.
-  const peak = points.at(-1)?.total ?? 0
+  // Refunds can dip the line, so the scale spans the real range; zero stays
+  // in it as the baseline.
+  const totals = points.map((p) => p.total)
+  const final = totals.at(-1) ?? 0
+  const top = Math.max(0, ...totals)
+  const bottom = Math.min(0, ...totals)
 
-  if (points.length === 0 || peak === 0) {
+  if (points.length === 0 || top === bottom) {
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">
         No spending to plot in this period.
@@ -46,7 +50,7 @@ export function SpendOverTime({ points }: { points: CumulativePoint[] }) {
   }
 
   const x = (index: number) => ((index + 0.5) / points.length) * 100
-  const y = (amount: number) => 100 - (amount / peak) * 100
+  const y = (amount: number) => 100 - ((amount - bottom) / (top - bottom)) * 100
 
   const line = points.map((p, i) => `${x(i)},${y(p.total)}`).join(' ')
   const shown = hovered === null ? null : points[hovered]
@@ -68,11 +72,13 @@ export function SpendOverTime({ points }: { points: CumulativePoint[] }) {
         </span>
         <span className="tabular-nums">
           <span className="font-medium">
-            {EUR.format(shown ? shown.total : peak)}
+            {EUR.format(shown ? shown.total : final)}
           </span>
-          {shown && shown.spent > 0 && (
+          {shown && shown.spent !== 0 && (
             <span className="text-muted-foreground ml-2 text-xs">
-              +{EUR.format(shown.spent)} that day
+              {shown.spent > 0
+                ? `+${EUR.format(shown.spent)} that day`
+                : `${EUR.format(-shown.spent)} refunded that day`}
             </span>
           )}
         </span>
@@ -90,7 +96,7 @@ export function SpendOverTime({ points }: { points: CumulativePoint[] }) {
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           role="img"
-          aria-label={`Cumulative spending, ending at ${EUR.format(peak)}`}
+          aria-label={`Cumulative spending, ending at ${EUR.format(final)}`}
         >
           <polyline
             points={line}

@@ -206,6 +206,17 @@ describe('spend by month', () => {
     )
     expect(series).toEqual([{ month: '2026-09', spent: 30 }])
   })
+
+  test('nets refunds into their month', () => {
+    const series = spendByMonth(
+      [
+        tx({ date: '2026-09-02', amount: -30 }),
+        tx({ date: '2026-09-12', amount: 10 }),
+      ],
+      everything,
+    )
+    expect(series).toEqual([{ month: '2026-09', spent: 20 }])
+  })
 })
 
 describe('outstanding work', () => {
@@ -344,11 +355,22 @@ describe('spend over time', () => {
   })
 
   test('income never appears as spending', () => {
-    const points = spendOverTime([tx({ date: '2026-04-02', amount: 900 })], {
-      period: '2026-04',
-      category: ALL,
-    })
+    const points = spendOverTime(
+      [tx({ date: '2026-04-02', category: 'Salary', amount: 900 })],
+      { period: '2026-04', category: ALL },
+    )
     expect(points.every((p) => p.spent === 0)).toBe(true)
+  })
+
+  test('a refund nets in, so the series ends at the period total', () => {
+    const data = [
+      tx({ date: '2026-04-02', amount: -50 }),
+      tx({ date: '2026-04-09', amount: 20 }),
+    ]
+    const filter = { period: '2026-04', category: ALL } as const
+    const points = spendOverTime(data, filter)
+    expect(points[8]).toEqual({ key: '2026-04-09', spent: -20 })
+    expect(runningTotal(points).at(-1)?.total).toBe(totals(data, filter).spent)
   })
 
   test('the category filter scopes the series', () => {
@@ -372,15 +394,15 @@ describe('spend over time', () => {
 })
 
 describe('running total', () => {
-  test('never decreases, whatever the period does', () => {
+  test('accumulates, dipping on a refund', () => {
     const totals = runningTotal([
       { key: 'a', spent: 10 },
       { key: 'b', spent: 0 },
-      { key: 'c', spent: 5 },
+      { key: 'c', spent: -4 },
+      { key: 'd', spent: 5 },
     ]).map((p) => p.total)
 
-    expect(totals).toEqual([10, 10, 15])
-    expect(totals).toEqual([...totals].sort((x, y) => x - y))
+    expect(totals).toEqual([10, 10, 6, 11])
   })
 
   test('keeps the bucket spend alongside the total', () => {

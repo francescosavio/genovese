@@ -101,6 +101,8 @@ export function spendByBucket(
 
 export type MonthTotal = { month: MonthKey; spent: number }
 
+// Net of refunds, matching totals()
+
 export function spendByMonth(
   transactions: Transaction[],
   filter: Filter,
@@ -108,10 +110,8 @@ export function spendByMonth(
   const sums = new Map<MonthKey, number>()
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
-    const { amount } = tx
-    if (amount >= 0) continue
     const month = monthOf(tx)
-    sums.set(month, (sums.get(month) ?? 0) - amount)
+    sums.set(month, (sums.get(month) ?? 0) - tx.amount)
   }
   return [...sums]
     .map(([month, spent]) => ({ month, spent: round2(spent) }))
@@ -162,7 +162,8 @@ export type TimePoint = { key: string; spent: number }
 const daysInMonth = (year: number, month: number) =>
   new Date(Date.UTC(year, month, 0)).getUTCDate()
 
-// Daily inside any chosen period
+// Daily inside any chosen period. Net of refunds, so the plot ends where
+// totals() does.
 export function spendOverTime(
   transactions: Transaction[],
   filter: Filter,
@@ -172,10 +173,8 @@ export function spendOverTime(
 
   for (const tx of transactions) {
     if (!matches(tx, filter)) continue
-    const { amount } = tx
-    if (amount >= 0) continue
     const key = daily ? tx.date : monthOf(tx)
-    sums.set(key, (sums.get(key) ?? 0) - amount)
+    sums.set(key, (sums.get(key) ?? 0) - tx.amount)
   }
 
   return bucketKeys(transactions, filter.period).map((key) => ({
@@ -208,8 +207,8 @@ function bucketKeys(transactions: Transaction[], period: Period): string[] {
 
 export type CumulativePoint = TimePoint & { total: number }
 
-// The line plots the running total, so it only ever grows. Each point keeps
-// its own bucket's spend too, so the hover can show both.
+// The line plots the running total; a refund dips it. Each point keeps its
+// own bucket's spend too, so the hover can show both.
 export function runningTotal(points: TimePoint[]): CumulativePoint[] {
   let sum = 0
   return points.map((point) => {
