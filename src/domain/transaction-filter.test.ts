@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest'
 import type { Transaction } from './transaction'
-import { countByView, filterTransactions } from './transaction-filter'
+import {
+  countByView,
+  filterTransactions,
+  merchantsOf,
+} from './transaction-filter'
 
 function tx(over: Partial<Transaction> = {}): Transaction {
   return {
@@ -76,5 +80,30 @@ describe('search', () => {
 
   test('whitespace is not a query', () => {
     expect(filterTransactions(data, 'all', '   ')).toHaveLength(2)
+  })
+})
+
+describe('merchants of a selection', () => {
+  const data = [
+    tx({ id: 'a', merchant: 'bar luna' }),
+    tx({ id: 'b', merchant: 'bar luna' }),
+    tx({ id: 'c', merchant: 'cafe nord' }),
+    tx({ id: 'd', merchant: null }),
+    tx({ id: 'e', merchant: 'not picked' }),
+  ]
+
+  test('each merchant once, however many of its rows were picked', () => {
+    expect(merchantsOf(data, new Set(['a', 'b', 'c']))).toEqual([
+      'bar luna',
+      'cafe nord',
+    ])
+  })
+
+  test('a row without a merchant contributes nothing', () => {
+    expect(merchantsOf(data, new Set(['d']))).toEqual([])
+  })
+
+  test('an id no longer on screen is ignored', () => {
+    expect(merchantsOf(data, new Set(['gone']))).toEqual([])
   })
 })

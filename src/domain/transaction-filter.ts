@@ -29,3 +29,16 @@ export function countByView(
     uncategorised: filterTransactions(transactions, 'uncategorised').length,
   }
 }
+
+// Categories belong to merchants, so assigning to a selection maps each
+// merchant once, however many of its rows were picked.
+export function merchantsOf(
+  transactions: Transaction[],
+  ids: ReadonlySet<string>,
+): string[] {
+  const merchants = transactions
+    .filter((tx) => ids.has(tx.id))
+    .map((tx) => tx.merchant)
+    .filter((m) => m !== null)
+  return [...new Set(merchants)]
+}

@@ -32,6 +32,12 @@ function mapType(raw: string): TransactionType {
   return TYPE_MAP[raw.toLowerCase().replace(/[^a-z]/g, '')] ?? 'other'
 }
 
+// ING reformats Notifications between exports ("14-10-2026" became
+// "14/10/2026"), which gave one transaction a new id per export and imported
+// it again. Letters and digits only keeps what tells rows apart.
+const fingerprint = (notifications: string) =>
+  notifications.toLowerCase().replace(/[^a-z0-9]/g, '')
+
 // Dutch formatting: "1.234,00"
 function parseAmount(raw: string): number {
   const text = raw.trim()
@@ -81,9 +87,9 @@ export const ingAdapter = {
       const amount = round2(direction === 'credit' ? magnitude : -magnitude)
 
       transactions.push({
-        // Notifications holds the bank's own reference, date carries not time.
+        // Notifications holds the time and the bank's reference; the date carries no time.
         id: contentHash(
-          `ing|${date}|EUR|${amount}|${rawDescription}|${(row.Notifications ?? '').trim()}`,
+          `ing|${date}|EUR|${amount}|${rawDescription}|${fingerprint(row.Notifications ?? '')}`,
         ),
         date,
         amount, // the export is a single-currency account

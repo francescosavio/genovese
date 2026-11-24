@@ -11,6 +11,7 @@ import {
   loadMerchantOverrides,
   resolveCategories,
   setMerchantCategory,
+  setMerchantsCategory,
 } from './overrides'
 import { SHEETS, fromWorkbook, toWorkbook } from './spreadsheet'
 
@@ -109,6 +110,24 @@ describe('assigning a merchant', () => {
 
     expect(await db.merchants.count()).toBe(0)
     expect((await resolved('a'))?.category).toBeNull()
+  })
+})
+
+describe('assigning several merchants', () => {
+  test('maps every one of them in a single call', async () => {
+    await importTransactions(
+      result(
+        tx('a', { merchant: 'bar luna' }),
+        tx('b', { merchant: 'cafe nord' }),
+        tx('c', { merchant: 'albert heijn' }),
+      ),
+    )
+
+    await setMerchantsCategory(['bar luna', 'cafe nord'], 'Social Life', 'Bar')
+
+    expect((await resolved('a'))?.subcategory).toBe('Bar')
+    expect((await resolved('b'))?.subcategory).toBe('Bar')
+    expect((await resolved('c'))?.category).toBeNull()
   })
 })
 

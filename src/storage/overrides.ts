@@ -40,6 +40,23 @@ export async function setMerchantCategory(
   })
 }
 
+// Several merchants at once, in one write
+export async function setMerchantsCategory(
+  merchants: string[],
+  category: Category,
+  subcategory: Subcategory | null,
+  now = new Date(),
+): Promise<void> {
+  await db.merchants.bulkPut(
+    merchants.map((merchant) => ({
+      merchant,
+      category,
+      subcategory,
+      updatedAt: now.toISOString(),
+    })),
+  )
+}
+
 // Its transactions become uncategorised again
 export async function clearMerchantOverride(merchant: string): Promise<void> {
   await db.merchants.delete(merchant)

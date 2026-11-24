@@ -128,6 +128,28 @@ describe('identity', () => {
     expect(transactions[0]?.id).not.toBe(transactions[1]?.id)
   })
 
+  // ING wrote "14-10-2026" in one export and "14/10/2026" in the next, so
+  // every overlapping import added the same transaction again.
+  test('an export that reformats Notifications keeps the same id', () => {
+    const before = parseOne({
+      notifications: 'Description: top up Date/time: 14-10-2026 18:15:37',
+    })
+    const after = parseOne({
+      notifications: 'Description: top up Date/time: 14/10/2026 18:15:37',
+    })
+    expect(after.id).toBe(before.id)
+  })
+
+  test('two same-day transfers at different times stay two', () => {
+    const morning = parseOne({
+      notifications: 'Date/time: 14-10-2026 09:00:00',
+    })
+    const evening = parseOne({
+      notifications: 'Date/time: 14-10-2026 18:15:37',
+    })
+    expect(morning.id).not.toBe(evening.id)
+  })
+
   test('re-importing the same statement produces the same ids', () => {
     const statement = csv(row(), row({ amount: '9,99' }))
     expect(ingAdapter.parse(statement).transactions.map((t) => t.id)).toEqual(
